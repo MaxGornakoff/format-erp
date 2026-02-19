@@ -21,7 +21,8 @@ export const en = {
     page: 'Page',
     of: 'of',
     previous: 'Previous',
-    next: 'Next'
+    next: 'Next',
+    actions: 'Actions'
   },
 
   auth: {

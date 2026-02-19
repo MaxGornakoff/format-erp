@@ -5,7 +5,13 @@ export default {
     "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        // 'custom': ['MyCustomFont', 'sans-serif'],
+        // или сделайте его основным шрифтом:
+        'sans': ['Inter', 'system-ui', 'sans-serif'],
+      },
+    },
   },
   plugins: [],
 }

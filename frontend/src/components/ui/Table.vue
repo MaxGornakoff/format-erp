@@ -19,7 +19,7 @@
               </span>
             </div>
           </th>
-          <th v-if="$slots.actions" class="px-4 py-3 text-center font-semibold text-gray-700">Actions</th>
+          <th v-if="$slots.actions" class="px-4 py-3 text-center font-semibold text-gray-700">{{ $t('common.actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -46,14 +46,14 @@
 
     <!-- Empty State -->
     <div v-if="rows.length === 0" class="text-center py-8 text-gray-500">
-      <p>No data available</p>
+      <p>{{ $t('common.noData') }}</p>
     </div>
   </div>
 
   <!-- Pagination -->
   <div v-if="pagination" class="mt-4 flex items-center justify-between">
     <p class="text-sm text-gray-600">
-      Page {{ pagination.currentPage }} of {{ pagination.totalPages }} ({{ pagination.total }} total)
+      {{ $t('common.page') }} {{ pagination.currentPage }} {{ $t('common.of') }} {{ pagination.totalPages }} ({{ pagination.total }} {{ $t('common.total') }})
     </p>
     <div class="flex gap-2">
       <Button
@@ -62,7 +62,7 @@
         :disabled="pagination.currentPage === 1"
         @click="$emit('prev-page')"
       >
-        Previous
+        {{ $t('common.previous') }}
       </Button>
       <Button
         variant="secondary"
@@ -70,14 +70,17 @@
         :disabled="pagination.currentPage === pagination.totalPages"
         @click="$emit('next-page')"
       >
-        Next
+        {{ $t('common.next') }}
       </Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts" generic="T">
+import { useI18n } from 'vue-i18n'
 import Button from './Button.vue'
+
+const { t: $t } = useI18n()
 
 interface Column {
   key: string

@@ -21,7 +21,8 @@ export const ru = {
     page: 'Страница',
     of: 'из',
     previous: 'Предыдущая',
-    next: 'Следующая'
+    next: 'Следующая',
+    actions: 'Действия'
   },
 
   auth: {

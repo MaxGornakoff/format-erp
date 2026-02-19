@@ -6,7 +6,7 @@ export const useMockData = () => {
   const mockUsersList: (User & { password: string })[] = [
     {
       id: 1,
-      name: 'John Doe',
+      name: 'Иван Петров',
       email: 'worker1@example.com',
       role: 'worker',
       created_at: '2025-12-15T10:00:00Z',
@@ -14,7 +14,7 @@ export const useMockData = () => {
     },
     {
       id: 2,
-      name: 'Jane Smith',
+      name: 'Мария Иванова',
       email: 'manager@example.com',
       role: 'manager',
       created_at: '2025-11-20T14:00:00Z',
@@ -22,7 +22,7 @@ export const useMockData = () => {
     },
     {
       id: 3,
-      name: 'Bob Johnson',
+      name: 'Борис Соколов',
       email: 'admin@example.com',
       role: 'admin',
       created_at: '2025-10-01T09:00:00Z',
@@ -31,7 +31,7 @@ export const useMockData = () => {
   ]
 
   // Mock current user (default to worker)
-  const currentUser: User = mockUsersList[0]
+  const currentUser: User = mockUsersList[0]!
 
   // Mock orders
   const mockOrders: Order[] = [
@@ -41,7 +41,7 @@ export const useMockData = () => {
       description: 'Users are having trouble with the login form on mobile devices. Please adjust the CSS.',
       status: 'in_progress',
       user_id: 1,
-      user: { id: 1, name: 'John Doe' },
+      user: { id: 1, name: 'Иван Петров' },
       created_at: '2026-02-15T10:00:00Z',
       updated_at: '2026-02-18T15:30:00Z'
     },
@@ -51,7 +51,7 @@ export const useMockData = () => {
       description: 'Add interactive charts to the dashboard showing order statistics.',
       status: 'new',
       user_id: 2,
-      user: { id: 2, name: 'Jane Smith' },
+      user: { id: 2, name: 'Мария Иванова' },
       created_at: '2026-02-18T09:00:00Z',
       updated_at: '2026-02-18T09:00:00Z'
     },
@@ -61,7 +61,7 @@ export const useMockData = () => {
       description: 'Optimize queries for orders table with proper indexing.',
       status: 'completed',
       user_id: 3,
-      user: { id: 3, name: 'Bob Johnson' },
+      user: { id: 3, name: 'Борис Соколов' },
       created_at: '2026-02-10T14:00:00Z',
       updated_at: '2026-02-17T16:45:00Z'
     },
@@ -71,7 +71,7 @@ export const useMockData = () => {
       description: 'Implement refresh token logic for better security.',
       status: 'in_progress',
       user_id: 2,
-      user: { id: 2, name: 'Jane Smith' },
+      user: { id: 2, name: 'Мария Иванова' },
       created_at: '2026-02-16T11:00:00Z',
       updated_at: '2026-02-19T08:20:00Z'
     },
@@ -81,7 +81,7 @@ export const useMockData = () => {
       description: 'Write comprehensive API documentation for all endpoints.',
       status: 'cancelled',
       user_id: 1,
-      user: { id: 1, name: 'John Doe' },
+      user: { id: 1, name: 'Иван Петров' },
       created_at: '2026-02-12T13:00:00Z',
       updated_at: '2026-02-14T10:00:00Z'
     }

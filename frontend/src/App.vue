@@ -1,5 +1,5 @@
 <template>
-  <div id="app" class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-[#F1F1F1] w-full">
     <template v-if="authStore.isAuthenticated">
       <!-- Authenticated layout -->
       <div class="flex">
