@@ -2,12 +2,14 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import authService from '@/services/authService'
 import type { User, LoginPayload, RegisterPayload } from '@/services/authService'
+import { useMockData } from '@/composables/useMockData'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const token = ref<string | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const mockData = useMockData()
 
   // Computed properties
   const isAuthenticated = computed(() => !!user.value && !!token.value)
@@ -16,7 +18,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => user.value?.role === 'admin')
 
   /**
-   * Initialize auth state from localStorage
+   * Initialize auth state from localStorage or use mock data for demo
    */
   const initAuth = async () => {
     const savedToken = authService.getToken()
@@ -29,6 +31,11 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = null
         user.value = null
       }
+    } else {
+      // For demo/development, auto-login with mock data
+      token.value = 'mock-token-' + Date.now()
+      user.value = mockData.currentUser
+      authService.setToken(token.value)
     }
   }
 

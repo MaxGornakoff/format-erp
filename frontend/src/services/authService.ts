@@ -1,4 +1,5 @@
 import api from './api'
+import { useMockData } from '@/composables/useMockData'
 
 export interface LoginPayload {
   email: string
@@ -41,6 +42,21 @@ const authService = {
    * @returns Promise with user and token
    */
   async login(payload: LoginPayload): Promise<AuthResponse> {
+    // Try mock data first for demo credentials
+    const mockData = useMockData()
+    const mockUser = mockData.mockUsersList.find(
+      u => u.email === payload.email && u.password === payload.password
+    )
+
+    if (mockUser) {
+      const { password, ...user } = mockUser
+      return {
+        user,
+        token: 'mock-token-' + Date.now()
+      }
+    }
+
+    // Otherwise try real API
     const response = await api.post('/auth/login', payload)
     return response.data
   },
@@ -50,7 +66,10 @@ const authService = {
    * @returns Promise
    */
   async logout(): Promise<void> {
-    await api.post('/auth/logout')
+    // For mock auth, just resolve without API call
+    // In production with real backend, uncomment the API call:
+    // await api.post('/auth/logout')
+    return Promise.resolve()
   },
 
   /**

@@ -7,7 +7,7 @@
         @click="handleLogout"
         class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
       >
-        Logout
+        {{ $t('auth.logout') }}
       </button>
     </div>
   </header>
@@ -16,12 +16,15 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const { t } = useI18n()
 
 const handleLogout = async () => {
   await authStore.logout()
   router.push('/login')
 }
 </script>
+

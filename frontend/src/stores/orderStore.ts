@@ -1,13 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import orderService from '@/services/orderService'
-import type { Order, CreateOrderPayload, UpdateOrderPayload, OrdersResponse } from '@/services/orderService'
+import type { Order, CreateOrderPayload, UpdateOrderPayload } from '@/services/orderService'
+import { useMockData } from '@/composables/useMockData'
 
 export const useOrderStore = defineStore('order', () => {
   const orders = ref<Order[]>([])
   const currentOrder = ref<Order | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const mockData = useMockData()
 
   // Pagination state
   const currentPage = ref(1)
@@ -27,24 +28,53 @@ export const useOrderStore = defineStore('order', () => {
   const hasPrevPage = computed(() => currentPage.value > 1)
 
   /**
-   * Fetch orders with current filters and pagination
+   * Fetch orders with current filters and pagination (uses mock data for demo)
    */
   const fetchOrders = async () => {
     isLoading.value = true
     error.value = null
     try {
-      const response: OrdersResponse = await orderService.getOrders(
-        currentPage.value,
-        perPage.value,
-        statusFilter.value,
-        searchQuery.value,
-        sortField.value,
-        sortDirection.value
-      )
-      orders.value = response.data
-      currentPage.value = response.current_page
-      total.value = response.total
-      lastPage.value = response.last_page
+      // Use mock data for demo
+      let filtered = [...mockData.mockOrders]
+
+      // Apply status filter
+      if (statusFilter.value) {
+        filtered = filtered.filter(o => o.status === statusFilter.value)
+      }
+
+      // Apply search query
+      if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase()
+        filtered = filtered.filter(o =>
+          o.title.toLowerCase().includes(query) ||
+          o.description?.toLowerCase().includes(query)
+        )
+      }
+
+      // Apply sorting
+      filtered.sort((a, b) => {
+        const aVal = a[sortField.value as keyof Order]
+        const bVal = b[sortField.value as keyof Order]
+        let comparison = 0
+        if (aVal instanceof Date && bVal instanceof Date) {
+          comparison = aVal.getTime() - bVal.getTime()
+        } else if (typeof aVal === 'string' && typeof bVal === 'string') {
+          comparison = aVal.localeCompare(bVal)
+        } else if (typeof aVal === 'number' && typeof bVal === 'number') {
+          comparison = aVal - bVal
+        }
+        return sortDirection.value === 'asc' ? comparison : -comparison
+      })
+
+      // Apply pagination
+      const start = (currentPage.value - 1) * perPage.value
+      const paginatedData = filtered.slice(start, start + perPage.value)
+
+      orders.value = paginatedData
+      total.value = filtered.length
+      lastPage.value = Math.ceil(filtered.length / perPage.value)
+
+      error.value = null
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Failed to fetch orders'
       throw err
@@ -54,30 +84,45 @@ export const useOrderStore = defineStore('order', () => {
   }
 
   /**
-   * Get single order by ID
+   * Get single order by ID (uses mock data for demo)
    */
   const fetchOrder = async (id: number) => {
     try {
-      currentOrder.value = await orderService.getOrder(id)
+      const order = mockData.mockOrders.find(o => o.id === id)
+      if (order) {
+        currentOrder.value = order
+      } else {
+        throw new Error('Order not found')
+      }
     } catch (err: any) {
-      error.value = err.response?.data?.message || 'Failed to fetch order'
+      error.value = err.message || 'Failed to fetch order'
       throw err
     }
   }
 
   /**
-   * Create new order
+   * Create new order (uses mock data for demo)
    */
   const createOrder = async (payload: CreateOrderPayload) => {
     isLoading.value = true
     error.value = null
     try {
-      const newOrder = await orderService.createOrder(payload)
+      const newOrder: Order = {
+        id: Math.max(...mockData.mockOrders.map(o => o.id), 0) + 1,
+        ...payload,
+        status: 'new',
+        user_id: 1,
+        user: { id: 1, name: 'Current User' },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      mockData.mockOrders.unshift(newOrder)
       orders.value.unshift(newOrder)
       currentPage.value = 1
+      error.value = null
       return newOrder
     } catch (err: any) {
-      error.value = err.response?.data?.message || 'Failed to create order'
+      error.value = err.message || 'Failed to create order'
       throw err
     } finally {
       isLoading.value = false
@@ -85,23 +130,24 @@ export const useOrderStore = defineStore('order', () => {
   }
 
   /**
-   * Update order
+   * Update order (uses mock data for demo)
    */
   const updateOrder = async (id: number, payload: UpdateOrderPayload) => {
     isLoading.value = true
     error.value = null
     try {
-      const updated = await orderService.updateOrder(id, payload)
+      const order = mockData.mockOrders.find(o => o.id === id)
+      if (!order) throw new Error('Order not found')
+
+      Object.assign(order, payload, { updated_at: new Date().toISOString() })
       const index = orders.value.findIndex((o: Order) => o.id === id)
       if (index !== -1) {
-        orders.value[index] = updated
+        orders.value[index] = { ...order }
       }
-      if (currentOrder.value?.id === id) {
-        currentOrder.value = updated
-      }
-      return updated
+      error.value = null
+      return order
     } catch (err: any) {
-      error.value = err.response?.data?.message || 'Failed to update order'
+      error.value = err.message || 'Failed to update order'
       throw err
     } finally {
       isLoading.value = false
@@ -109,19 +155,20 @@ export const useOrderStore = defineStore('order', () => {
   }
 
   /**
-   * Delete order
+   * Delete order (uses mock data for demo)
    */
   const deleteOrder = async (id: number) => {
     isLoading.value = true
     error.value = null
     try {
-      await orderService.deleteOrder(id)
-      orders.value = orders.value.filter((o: Order) => o.id !== id)
-      if (currentOrder.value?.id === id) {
-        currentOrder.value = null
+      const index = mockData.mockOrders.findIndex((o: Order) => o.id === id)
+      if (index !== -1) {
+        mockData.mockOrders.splice(index, 1)
       }
+      orders.value = orders.value.filter((o: Order) => o.id !== id)
+      error.value = null
     } catch (err: any) {
-      error.value = err.response?.data?.message || 'Failed to delete order'
+      error.value = err.message || 'Failed to delete order'
       throw err
     } finally {
       isLoading.value = false
