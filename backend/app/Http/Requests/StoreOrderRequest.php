@@ -22,9 +22,14 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string|max:2000',
+            'title' => 'nullable|string|max:255',
+            'description' => 'required|string|max:2000',
+            'note' => 'nullable|string|max:2000',
+            'package_cost' => 'nullable|numeric|min:0',
+            'order_cost' => 'nullable|numeric|min:0',
+            'priority' => 'required|in:low,medium,high',
             'status' => 'nullable|in:new,in_progress,completed,cancelled',
+            'user_id' => 'nullable|exists:users,id',
         ];
     }
 }

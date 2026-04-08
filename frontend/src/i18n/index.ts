@@ -15,12 +15,10 @@ export const i18n = createI18n<{ message: MessageSchema }, 'en' | 'ru'>({
 })
 
 export function setLanguage(locale: 'en' | 'ru') {
-  if (i18n.global.locale) {
-    i18n.global.locale.value = locale
-    localStorage.setItem('language', locale)
-  }
+  i18n.global.locale = locale
+  localStorage.setItem('language', locale)
 }
 
 export function getLanguage(): 'en' | 'ru' {
-  return (i18n.global.locale?.value as 'en' | 'ru') || 'en'
+  return (i18n.global.locale as 'en' | 'ru') || 'en'
 }

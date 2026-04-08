@@ -1,9 +1,6 @@
 <template>
-  <div class="mb-4">
-    <label v-if="label" :for="id" class="block text-sm font-medium text-gray-700 mb-1">
-      {{ label }}
-      <span v-if="required" class="text-red-500">*</span>
-    </label>
+  <div class="flex items-center">
+  
     <input
       :id="id"
       :type="type"
@@ -12,7 +9,7 @@
       :disabled="disabled"
       :required="required"
       :class="[
-        'w-full px-3 py-2 border rounded-lg font-base transition-colors duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed',
+        'w-full h-10 px-3 py-2 border rounded-lg font-base transition-colors duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed',
         error ? 'border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500' : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
       ]"
       @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
@@ -24,8 +21,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-
 interface Props {
   modelValue: string | number
   label?: string

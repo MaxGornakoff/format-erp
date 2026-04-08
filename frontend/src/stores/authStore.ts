@@ -5,35 +5,50 @@ import type { User, LoginPayload, RegisterPayload } from '@/services/authService
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
-  const token = ref<string | null>(null)
   const isLoading = ref(false)
+  const isInitializing = ref(false)
+  const isInitialized = ref(false)
   const error = ref<string | null>(null)
+  let initPromise: Promise<void> | null = null
 
   // Computed properties
-  const isAuthenticated = computed(() => !!user.value && !!token.value)
+  const isAuthenticated = computed(() => !!user.value)
   const isWorker = computed(() => user.value?.role === 'worker')
   const isManager = computed(() => user.value?.role === 'manager')
   const isAdmin = computed(() => user.value?.role === 'admin')
 
   /**
-   * Initialize auth state from localStorage or use mock data for demo
+   * Initialize auth state from the real backend session.
    */
   const initAuth = async () => {
-    const savedToken = authService.getToken()
-    if (savedToken) {
-      token.value = savedToken
+    if (isInitialized.value) {
+      return
+    }
+
+    if (initPromise) {
+      await initPromise
+      return
+    }
+
+    isInitializing.value = true
+    initPromise = (async () => {
       try {
         user.value = await authService.getCurrentUser()
-      } catch (err) {
-        authService.removeToken()
-        token.value = null
+        error.value = null
+      } catch (err: any) {
+        if (err?.response?.status !== 401) {
+          console.error('Init auth error:', err)
+        }
+
         user.value = null
+      } finally {
+        isInitializing.value = false
+        isInitialized.value = true
+        initPromise = null
       }
-    } else {
-      // User is not authenticated - no auto-login
-      user.value = null
-      token.value = null
-    }
+    })()
+
+    await initPromise
   }
 
   /**
@@ -42,11 +57,11 @@ export const useAuthStore = defineStore('auth', () => {
   const login = async (payload: LoginPayload) => {
     isLoading.value = true
     error.value = null
+
     try {
       const response = await authService.login(payload)
       user.value = response.user
-      token.value = response.token
-      authService.setToken(response.token)
+      isInitialized.value = true
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Login failed'
       throw err
@@ -61,11 +76,11 @@ export const useAuthStore = defineStore('auth', () => {
   const register = async (payload: RegisterPayload) => {
     isLoading.value = true
     error.value = null
+
     try {
       const response = await authService.register(payload)
       user.value = response.user
-      token.value = response.token
-      authService.setToken(response.token)
+      isInitialized.value = true
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Registration failed'
       throw err
@@ -84,8 +99,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Logout error:', err)
     } finally {
       user.value = null
-      token.value = null
-      authService.removeToken()
+      isInitialized.value = true
     }
   }
 
@@ -99,8 +113,9 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     // State
     user,
-    token,
     isLoading,
+    isInitializing,
+    isInitialized,
     error,
 
     // Computed

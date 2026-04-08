@@ -1,7 +1,6 @@
 <template>
   <div class="space-y-4">
     <h1 class="text-3xl font-bold text-gray-900">{{ $t('orders.title') }}</h1>
-    <p class="text-gray-600">{{ $t('orders.description') }}</p>
 
     <!-- Modal for Create/Edit -->
     <Modal v-model="showModal" @submit="handleModalSubmit">
@@ -20,8 +19,27 @@
     <OrdersTable
       @create="handleCreateOrder"
       @view="handleViewOrder"
-      @edit="handleEditOrder"
       @delete="handleDeleteOrder"
+    />
+
+    <ConfirmDialog
+      v-model="showDeleteDialog"
+      :title="$t('orders.deleteOrder')"
+      :message="$t('orders.confirmDelete')"
+      :confirm-text="$t('common.delete')"
+      :cancel-text="$t('common.cancel')"
+      confirm-variant="danger"
+      @confirm="confirmDeleteOrder"
+    />
+
+    <ConfirmDialog
+      v-model="showInfoDialog"
+      :title="dialogTitle"
+      :message="dialogMessage"
+      :confirm-text="$t('common.close')"
+      confirm-variant="primary"
+      :show-cancel="false"
+      @confirm="showInfoDialog = false"
     />
   </div>
 </template>
@@ -30,43 +48,74 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import type { Order } from '@/services/orderService'
+import { useOrderStore } from '@/stores/orderStore'
 import Modal from '@/components/ui/Modal.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import OrdersTable from '@/components/orders/OrdersTable.vue'
 import OrderForm from '@/components/orders/OrderForm.vue'
 
 const router = useRouter()
+const store = useOrderStore()
 const { t } = useI18n()
 const showModal = ref(false)
-const editingOrderId = ref<number | null>(null)
-const editingOrderData = ref()
+const showDeleteDialog = ref(false)
+const showInfoDialog = ref(false)
+const dialogTitle = ref('')
+const dialogMessage = ref('')
+const pendingDeleteOrderId = ref<number | null>(null)
+const editingOrderId = ref<number | undefined>(undefined)
+const editingOrderData = ref<{
+  description: string
+  note: string
+  package_cost: number | null
+  order_cost: number | null
+  priority?: Order['priority']
+  status?: Order['status']
+  user_id?: number
+} | undefined>(undefined)
 
 const handleCreateOrder = () => {
-  editingOrderId.value = null
+  editingOrderId.value = undefined
   editingOrderData.value = undefined
   showModal.value = true
+}
+
+const showErrorDialog = (message: string, title: string = t('common.error')) => {
+  dialogTitle.value = title
+  dialogMessage.value = message
+  showInfoDialog.value = true
 }
 
 const handleViewOrder = (id: number) => {
   router.push(`/orders/${id}`)
 }
 
-const handleEditOrder = (id: number) => {
-  editingOrderId.value = id
-  // TODO: Fetch order data for editing
-  showModal.value = true
+const handleDeleteOrder = (id: number) => {
+  pendingDeleteOrderId.value = id
+  showDeleteDialog.value = true
 }
 
-const handleDeleteOrder = async (id: number) => {
-  if (confirm(t('orders.confirmDelete'))) {
-    // TODO: Delete order via store
-    // await store.deleteOrder(id)
+const confirmDeleteOrder = async () => {
+  if (!pendingDeleteOrderId.value) {
+    return
+  }
+
+  try {
+    await store.deleteOrder(pendingDeleteOrderId.value)
+  } catch (err: any) {
+    showErrorDialog(err?.response?.data?.message || err?.message || t('messages.failedToDeleteOrder'))
+  } finally {
+    pendingDeleteOrderId.value = null
+    showDeleteDialog.value = false
   }
 }
 
-const handleFormSuccess = () => {
+const handleFormSuccess = async () => {
   showModal.value = false
-  editingOrderId.value = null
+  editingOrderId.value = undefined
   editingOrderData.value = undefined
+  await store.fetchOrders()
 }
 
 const handleModalSubmit = () => {

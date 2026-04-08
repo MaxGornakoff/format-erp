@@ -21,12 +21,10 @@ class OrderPolicy
      */
     public function view(User $user, Order $order): bool
     {
-        if ($user->role === 'admin') {
+        if (in_array($user->role, ['admin', 'manager'], true)) {
             return true;
         }
 
-        // Worker/Manager can view only their own orders or orders in their team
-        // For basic implementation, allow if they're the author
         return $user->id === $order->user_id;
     }
 
@@ -47,17 +45,7 @@ class OrderPolicy
             return true;
         }
 
-        // Worker can edit only their own orders with status new or in_progress
-        if ($user->role === 'worker' && $user->id === $order->user_id) {
-            return in_array($order->status, ['new', 'in_progress']);
-        }
-
-        // Manager can edit orders in their team (simplified: allow all for now)
-        if ($user->role === 'manager') {
-            return true;
-        }
-
-        return false;
+        return $user->id === $order->user_id;
     }
 
     /**

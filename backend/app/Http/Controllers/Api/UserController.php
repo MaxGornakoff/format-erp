@@ -19,9 +19,11 @@ class UserController extends Controller
         $this->authorize('viewAny', User::class);
 
         $query = User::query();
+        $currentUser = $request->user();
 
-        // Filter by role
-        if ($request->role) {
+        if ($currentUser->role === 'manager') {
+            $query->where('role', 'worker');
+        } elseif ($request->role) {
             $query->where('role', $request->role);
         }
 
@@ -80,7 +82,7 @@ class UserController extends Controller
         $this->authorize('update', $user);
 
         $data = $request->validated();
-        
+
         // Don't update password here (separate endpoint)
         if (isset($data['password'])) {
             unset($data['password']);

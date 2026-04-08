@@ -81,8 +81,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useUserStore } from '@/stores/userStore'
+import type { User } from '@/services/userService'
 import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import Alert from '@/components/ui/Alert.vue'
@@ -92,7 +94,7 @@ interface Props {
   initialData?: {
     name: string
     email: string
-    role: string
+    role: User['role']
   }
 }
 
@@ -102,16 +104,27 @@ const emit = defineEmits<{
   'success': []
 }>()
 
+const store = useUserStore()
 const { t } = useI18n()
 const isEdit = computed(() => !!props.userId)
 
-const form = ref({
-  name: props.initialData?.name || '',
-  email: props.initialData?.email || '',
+const form = ref<{ name: string; email: string; password: string; role: User['role'] }>({
+  name: '',
+  email: '',
   password: '',
-  role: props.initialData?.role || 'worker'
+  role: 'worker'
 })
 
+const syncForm = () => {
+  form.value = {
+    name: props.initialData?.name || '',
+    email: props.initialData?.email || '',
+    password: '',
+    role: props.initialData?.role || 'worker',
+  }
+}
+
+watch(() => props.initialData, syncForm, { immediate: true, deep: true })
 const errors = ref<Record<string, string>>({})
 const generalError = ref('')
 const isSubmitting = ref(false)
@@ -150,16 +163,23 @@ const handleSubmit = async () => {
   isSubmitting.value = true
   try {
     if (isEdit.value && props.userId) {
-      // TODO: Update user
-      // await userService.updateUser(props.userId, form.value)
+      await store.updateUser(props.userId, {
+        name: form.value.name,
+        email: form.value.email,
+        role: form.value.role,
+      })
     } else {
-      // TODO: Create user
-      // await userService.createUser(form.value)
+      await store.createUser({
+        name: form.value.name,
+        email: form.value.email,
+        password: form.value.password,
+        role: form.value.role,
+      })
     }
     generalError.value = ''
     emit('success')
   } catch (err: any) {
-    generalError.value = err.message || t('messages.failedToSaveUser')
+    generalError.value = err?.response?.data?.message || err?.message || t('messages.failedToSaveUser')
   } finally {
     isSubmitting.value = false
   }

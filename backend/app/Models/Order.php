@@ -12,11 +12,17 @@ class Order extends Model
     protected $fillable = [
         'title',
         'description',
+        'note',
+        'package_cost',
+        'order_cost',
+        'priority',
         'status',
         'user_id',
     ];
 
     protected $casts = [
+        'package_cost' => 'decimal:2',
+        'order_cost' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

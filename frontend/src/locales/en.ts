@@ -78,12 +78,28 @@ export const en = {
   orders: {
     title: 'Order Management',
     description: 'View and manage all orders',
+    formTitle: 'Title',
+    formTitlePlaceholder: 'Enter order title',
+    formDescription: 'Description',
+    formDescriptionPlaceholder: 'Enter order description',
+    note: 'Note',
+    notePlaceholder: 'Enter additional note',
+    packageCost: 'Package Cost',
+    packageCostPlaceholder: 'Enter package cost',
+    orderCost: 'Order Cost',
+    orderCostPlaceholder: 'Enter order cost',
+    priority: 'Priority',
+    executor: 'Executor',
+    selectExecutor: 'Select executor',
+    autoAssignedWorker: 'Executor is assigned automatically',
+    date: 'Date',
+    orderNumberShort: 'Order #',
     newOrder: '+ New Order',
     createOrder: 'Create Order',
     editOrder: 'Edit Order',
     orderDetails: 'Order Details',
     orderNumber: 'Order #',
-    createdBy: 'Created by',
+    createdBy: 'Executor',
     createdAt: 'Created At',
     updatedAt: 'Updated At',
     viewOrder: 'View',
@@ -91,7 +107,13 @@ export const en = {
     confirmDelete: 'Are you sure you want to delete this order?',
     status: 'Status',
     changeStatus: 'Change Status',
-    
+
+    priorities: {
+      low: 'Low',
+      medium: 'Medium',
+      high: 'High'
+    },
+
     statuses: {
       new: 'New',
       in_progress: 'In Progress',
@@ -100,7 +122,7 @@ export const en = {
     },
 
     filters: {
-      searchPlaceholder: 'Search by title or description...',
+      searchPlaceholder: 'Search by order #, description, or note...',
       allStatuses: 'All Statuses'
     }
   },
@@ -153,6 +175,8 @@ export const en = {
     passwordRequirements: 'Password must contain letters and numbers',
     titleRequired: 'Title is required',
     descriptionRequired: 'Description is required',
+    executorRequired: 'Please select an executor',
+    nonNegativeNumber: 'Value must be a number greater than or equal to 0',
     nameRequired: 'Name is required',
     emailRequired: 'Email is required'
   },

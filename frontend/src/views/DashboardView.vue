@@ -22,7 +22,7 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-600 mb-1">{{ $t('dashboard.memberSince') }}</p>
-            <p class="text-2xl font-bold text-gray-900">{{ formatTableDate(authStore.user?.created_at) }}</p>
+            <p class="text-2xl font-bold text-gray-900">{{ formatTableDate(authStore.user?.created_at || '') }}</p>
           </div>
           <div class="text-4xl">📅</div>
         </div>

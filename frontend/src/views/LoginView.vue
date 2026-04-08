@@ -55,14 +55,31 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, watchEffect } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 useI18n()
+
+const getSafeRedirectPath = (): string => {
+  const redirectPath = route.query.redirect as string | undefined
+
+  if (!redirectPath || redirectPath === '/login' || redirectPath.startsWith('/login?')) {
+    return '/'
+  }
+
+  return redirectPath
+}
+
+watchEffect(() => {
+  if (authStore.isAuthenticated && route.name === 'Login') {
+    router.replace(getSafeRedirectPath())
+  }
+})
 
 const form = reactive({
   email: '',
@@ -72,7 +89,7 @@ const form = reactive({
 const handleLogin = async () => {
   try {
     await authStore.login(form)
-    router.push('/')
+    router.replace(getSafeRedirectPath())
   } catch (err) {
     console.error('Login error:', err)
   }

@@ -58,37 +58,33 @@ const router = createRouter({
 })
 
 // Navigation guard for authentication and authorization
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore()
-  const requiresAuth = to.meta.requiresAuth
-  const requiresAdmin = to.meta.requiresAdmin
-  const requiresManager = to.meta.requiresManager
+  const requiresAuth = Boolean(to.meta.requiresAuth)
+  const requiresAdmin = Boolean(to.meta.requiresAdmin)
+  const requiresManager = Boolean(to.meta.requiresManager)
 
-  // Check if user is authenticated
+  if (!authStore.isInitialized) {
+    await authStore.initAuth()
+  }
+
   if (requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'Login', query: { redirect: to.fullPath } })
-    return
+    return { name: 'Login', query: { redirect: to.fullPath } }
   }
 
-  // Check admin access
   if (requiresAdmin && !authStore.isAdmin) {
-    next('/')
-    return
+    return '/'
   }
 
-  // Check manager or admin access
   if (requiresManager && !authStore.isManager && !authStore.isAdmin) {
-    next('/')
-    return
+    return '/'
   }
 
-  // Redirect authenticated users away from login/register
   if ((to.name === 'Login' || to.name === 'Register') && authStore.isAuthenticated) {
-    next('/')
-    return
+    return '/'
   }
 
-  next()
+  return true
 })
 
 export default router

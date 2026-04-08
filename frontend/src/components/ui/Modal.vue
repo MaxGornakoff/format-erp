@@ -24,16 +24,7 @@
           </div>
 
           <!-- Footer -->
-          <div class="flex gap-2 p-4 border-t border-gray-200">
-            <slot name="footer">
-              <Button variant="secondary" @click="$emit('update:modelValue', false)" class="flex-1">
-                Cancel
-              </Button>
-              <Button @click="$emit('submit')" class="flex-1">
-                Submit
-              </Button>
-            </slot>
-          </div>
+          <slot name="footer" />
         </div>
       </div>
     </Transition>
@@ -41,8 +32,6 @@
 </template>
 
 <script setup lang="ts">
-import Button from './Button.vue'
-
 interface Props {
   modelValue: boolean
 }

@@ -144,8 +144,8 @@ async register(payload: RegisterPayload): Promise<AuthResponse> {
 
 ## 📝 Чек-лист миграции
 
-- [ ] Удалить mock логику из `authService.login()`
-- [ ] Раскомментировать `authService.logout()`
+- [x] Удалить mock логику из `authService.login()`
+- [x] Перевести `authService.logout()` на реальный backend session auth
 - [ ] Проверить все эндпоинты в `orderService`
 - [ ] Проверить все эндпоинты в `userService`
 - [ ] Протестировать login/logout с реальным backend

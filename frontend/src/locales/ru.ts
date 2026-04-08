@@ -77,13 +77,29 @@ export const ru = {
 
   orders: {
     title: 'Управление заявками',
+    formTitle: 'Тема',
+    formTitlePlaceholder: 'Введите тему заявки',
+    formDescription: 'Описание',
+    formDescriptionPlaceholder: 'Введите описание заказа',
+    note: 'Примечание',
+    notePlaceholder: 'Введите дополнительное примечание',
+    packageCost: 'Стоимость пакета',
+    packageCostPlaceholder: 'Введите стоимость пакета',
+    orderCost: 'Стоимость заказа',
+    orderCostPlaceholder: 'Введите стоимость заказа',
+    priority: 'Срочность',
+    executor: 'Исполнитель',
+    selectExecutor: 'Выберите исполнителя',
+    autoAssignedWorker: 'Исполнитель назначается автоматически',
+    date: 'Дата',
+    orderNumberShort: '№ Заказа',
     description: 'Просмотр и управление всеми заявками',
     newOrder: '+ Новая заявка',
     createOrder: 'Создать заявку',
     editOrder: 'Редактировать заявку',
     orderDetails: 'Детали заявки',
-    orderNumber: 'Заявка #',
-    createdBy: 'Создано',
+    orderNumber: 'Заказ #',
+    createdBy: 'Исполнитель',
     createdAt: 'Дата создания',
     updatedAt: 'Обновлено',
     viewOrder: 'Просмотр',
@@ -91,16 +107,22 @@ export const ru = {
     confirmDelete: 'Вы уверены, что хотите удалить эту заявку?',
     status: 'Статус',
     changeStatus: 'Изменить статус',
-    
+
+    priorities: {
+      low: 'Низкая',
+      medium: 'Средняя',
+      high: 'Высокая'
+    },
+
     statuses: {
       new: 'Новая',
       in_progress: 'В процессе',
-      completed: 'Завершена',
+      completed: 'Выполнена',
       cancelled: 'Отменена'
     },
 
     filters: {
-      searchPlaceholder: 'Поиск по названию или описанию...',
+      searchPlaceholder: 'Поиск по № заказа, описанию или примечанию...',
       allStatuses: 'Все статусы'
     }
   },
@@ -153,6 +175,8 @@ export const ru = {
     passwordRequirements: 'Пароль должен содержать буквы и цифры',
     titleRequired: 'Название обязательно',
     descriptionRequired: 'Описание обязательно',
+    executorRequired: 'Выберите исполнителя',
+    nonNegativeNumber: 'Значение должно быть числом не меньше 0',
     nameRequired: 'Имя обязательно',
     emailRequired: 'Email обязательно'
   },

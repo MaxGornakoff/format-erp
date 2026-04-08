@@ -1,29 +1,47 @@
 import api from './api'
 
+export type OrderStatus = 'new' | 'in_progress' | 'completed' | 'cancelled'
+export type OrderPriority = 'low' | 'medium' | 'high'
+
 export interface Order {
   id: number
   title: string
-  description?: string
-  status: 'new' | 'in_progress' | 'completed' | 'cancelled'
+  description: string
+  note?: string | null
+  package_cost?: string | number | null
+  order_cost?: string | number | null
+  priority: OrderPriority
+  status: OrderStatus
   user_id: number
   user: {
     id: number
     name: string
+    email?: string
+    role?: 'worker' | 'manager' | 'admin'
   }
   created_at: string
   updated_at: string
 }
 
 export interface CreateOrderPayload {
-  title: string
-  description?: string
-  status?: 'new' | 'in_progress' | 'completed' | 'cancelled'
+  title?: string
+  description: string
+  note?: string
+  package_cost?: number | null
+  order_cost?: number | null
+  priority: OrderPriority
+  user_id?: number
 }
 
 export interface UpdateOrderPayload {
   title?: string
   description?: string
-  status?: 'new' | 'in_progress' | 'completed' | 'cancelled'
+  note?: string | null
+  package_cost?: number | null
+  order_cost?: number | null
+  priority?: OrderPriority
+  status?: OrderStatus
+  user_id?: number
 }
 
 export interface OrdersResponse {

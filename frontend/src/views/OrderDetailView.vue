@@ -9,30 +9,24 @@
       </button>
     </div>
 
-    <!-- Order Detail Component -->
     <OrderDetail
       :order-id="orderId"
       :order="currentOrder"
       :loading="isLoading"
       :error="error"
       @back="$router.back()"
-      @edit="handleEdit"
       @delete="handleDelete"
-      @status-change="handleStatusChange"
     />
 
-    <!-- Edit Modal -->
-    <Modal v-model="showEditModal" @submit="handleSubmitEdit">
-      <template #header>
-        {{ $t('orders.editOrder') }}
-      </template>
-      <OrderForm
-        :order-id="orderId"
-        :initial-data="editFormData"
-        @cancel="showEditModal = false"
-        @success="handleEditSuccess"
-      />
-    </Modal>
+    <ConfirmDialog
+      v-model="showDeleteDialog"
+      :title="$t('orders.deleteOrder')"
+      :message="$t('orders.confirmDelete')"
+      :confirm-text="$t('common.delete')"
+      :cancel-text="$t('common.cancel')"
+      confirm-variant="danger"
+      @confirm="confirmDeleteOrder"
+    />
   </div>
 </template>
 
@@ -41,62 +35,33 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useOrderStore } from '@/stores/orderStore'
+import type { Order } from '@/services/orderService'
 import OrderDetail from '@/components/orders/OrderDetail.vue'
-import OrderForm from '@/components/orders/OrderForm.vue'
-import Modal from '@/components/ui/Modal.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
 const store = useOrderStore()
 const { t } = useI18n()
 
-const orderId = computed(() => parseInt(route.params.id as string))
-const showEditModal = ref(false)
+const orderId = computed(() => parseInt(route.params.id as string, 10))
+const showDeleteDialog = ref(false)
 const isLoading = ref(false)
 const error = ref('')
-const editFormData = ref()
 
-const currentOrder = computed(() => store.currentOrder)
+const currentOrder = computed<Order | undefined>(() => store.currentOrder ?? undefined)
 
-const handleEdit = () => {
-  if (currentOrder.value) {
-    editFormData.value = {
-      title: currentOrder.value.title,
-      description: currentOrder.value.description,
-      status: currentOrder.value.status
-    }
-    showEditModal.value = true
-  }
+const handleDelete = () => {
+  showDeleteDialog.value = true
 }
 
-const handleEditSuccess = () => {
-  showEditModal.value = false
-  loadOrder()
-}
-
-const handleSubmitEdit = () => {
-  // Form handles submission
-}
-
-const handleDelete = async () => {
-  if (confirm(t('orders.confirmDelete'))) {
-    try {
-      await store.deleteOrder(orderId.value)
-      router.push('/orders')
-    } catch (err: any) {
-      error.value = err.message || t('messages.failedToDeleteOrder')
-    }
-  }
-}
-
-const handleStatusChange = async (newStatus: string) => {
+const confirmDeleteOrder = async () => {
   try {
-    await store.updateOrder(orderId.value, {
-      status: newStatus
-    })
-    loadOrder()
+    await store.deleteOrder(orderId.value)
+    showDeleteDialog.value = false
+    router.push('/orders')
   } catch (err: any) {
-    error.value = err.message || t('messages.failedToSaveOrder')
+    error.value = err.message || t('messages.failedToDeleteOrder')
   }
 }
 

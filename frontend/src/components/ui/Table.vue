@@ -1,13 +1,13 @@
 <template>
   <div class="overflow-x-auto">
-    <table class="w-full border-collapse">
+    <table class="w-full min-w-max border-collapse">
       <thead>
         <tr class="bg-gray-100 border-b border-gray-300">
           <th
             v-for="column in columns"
             :key="column.key"
             :class="[
-              'px-4 py-3 text-left font-semibold text-gray-700',
+              'px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap',
               column.sortable && 'cursor-pointer hover:bg-gray-200 transition-colors'
             ]"
             @click="column.sortable && $emit('sort', column.key)"
@@ -26,18 +26,22 @@
         <tr
           v-for="(row, idx) in rows"
           :key="idx"
-          class="border-b border-gray-200 hover:bg-gray-50 transition-colors"
+          :class="[
+            'border-b border-gray-200 hover:bg-gray-50 transition-colors',
+            clickableRows && 'cursor-pointer'
+          ]"
+          @click="clickableRows && $emit('row-click', row)"
         >
           <td
             v-for="column in columns"
             :key="column.key"
-            class="px-4 py-3 text-gray-700"
+            class="px-4 py-3 text-gray-700 align-middle"
           >
             <slot :name="`cell-${column.key}`" :row="row" :value="row[column.key as keyof typeof row]">
               {{ row[column.key as keyof typeof row] }}
             </slot>
           </td>
-          <td v-if="$slots.actions" class="px-4 py-3 text-center">
+          <td v-if="$slots.actions" class="px-4 py-3 text-center" @click.stop>
             <slot name="actions" :row="row" />
           </td>
         </tr>
@@ -100,13 +104,17 @@ interface Props {
   pagination?: Pagination
   sortField?: string
   sortDirection?: 'asc' | 'desc'
+  clickableRows?: boolean
 }
 
-defineProps<Props>()
+withDefaults(defineProps<Props>(), {
+  clickableRows: false,
+})
 
 defineEmits<{
   'sort': [key: string]
   'next-page': []
   'prev-page': []
+  'row-click': [row: T]
 }>()
 </script>

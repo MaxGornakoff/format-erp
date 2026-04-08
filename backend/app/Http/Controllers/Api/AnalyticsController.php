@@ -20,13 +20,7 @@ class AnalyticsController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Orders count by status
         $query = Order::query();
-        
-        // If manager, filter by team (simplified: all for now)
-        // if ($user->role === 'manager') {
-        //     $query->whereIn('user_id', $user->team()->pluck('id'));
-        // }
 
         $ordersByStatus = [
             'new' => $query->clone()->where('status', 'new')->count(),
@@ -35,18 +29,25 @@ class AnalyticsController extends Controller
             'cancelled' => $query->clone()->where('status', 'cancelled')->count(),
         ];
 
-        // Top active workers
-        $topWorkers = User::withCount(['orders' => function ($q) {
-            $q->where('status', 'completed');
-        }])
-        ->where('role', 'worker')
-        ->orderByDesc('orders_count')
-        ->limit(5)
-        ->get(['id', 'name', 'orders_count']);
+        $topWorkers = User::where('role', 'worker')
+            ->withCount([
+                'orders as completed_count' => function ($q) {
+                    $q->where('status', 'completed');
+                }
+            ])
+            ->orderByDesc('completed_count')
+            ->limit(5)
+            ->get(['id', 'name', 'email']);
 
         return response()->json([
+            'stats' => [
+                'total_orders' => $query->count(),
+                'new_orders' => $ordersByStatus['new'],
+                'in_progress_orders' => $ordersByStatus['in_progress'],
+                'completed_orders' => $ordersByStatus['completed'],
+                'cancelled_orders' => $ordersByStatus['cancelled'],
+            ],
             'orders_by_status' => $ordersByStatus,
-            'total_orders' => $query->count(),
             'top_workers' => $topWorkers,
         ]);
     }
@@ -58,7 +59,7 @@ class AnalyticsController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role !== 'admin') {
+        if (!in_array($user->role, ['manager', 'admin'])) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -82,7 +83,7 @@ class AnalyticsController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role !== 'admin') {
+        if (!in_array($user->role, ['manager', 'admin'])) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 

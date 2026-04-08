@@ -7,9 +7,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        // 'custom': ['MyCustomFont', 'sans-serif'],
-        // или сделайте его основным шрифтом:
-        'sans': ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Montserrat', 'Inter', 'system-ui', 'sans-serif'],
+        montserrat: ['Montserrat', 'Inter', 'sans-serif'],
       },
     },
   },

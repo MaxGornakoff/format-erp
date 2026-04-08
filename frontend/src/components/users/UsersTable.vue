@@ -29,25 +29,30 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="text-center py-8">
+    <div v-if="store.isLoading" class="text-center py-8">
       <div class="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       <p class="mt-2 text-gray-600">{{ $t('messages.loadingUsers') }}</p>
     </div>
 
     <!-- Error State -->
     <Alert
-      v-if="error"
+      v-if="store.error"
       type="error"
       :title="$t('common.error')"
-      :message="error"
+      :message="store.error"
     />
 
     <!-- Table -->
     <Table
-      v-if="!isLoading"
+      v-if="!store.isLoading"
       :columns="columns"
-      :rows="users"
+      :rows="store.users"
       :pagination="pagination"
+      :sort-field="store.sortField"
+      :sort-direction="store.sortDirection"
+      @sort="handleSort"
+      @next-page="handleNextPage"
+      @prev-page="handlePrevPage"
     >
       <!-- Email Cell -->
       <template #cell-email="{ row }">
@@ -63,7 +68,7 @@
 
       <!-- Created Cell -->
       <template #cell-created_at="{ value }">
-        {{ formatTableDate(value) }}
+        {{ formatTableDate(String(value ?? '')) }}
       </template>
 
       <!-- Actions -->
@@ -100,37 +105,36 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFormattedDate } from '@/composables/useFormattedDate'
+import { useUserStore } from '@/stores/userStore'
 import Table from '@/components/ui/Table.vue'
 import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Alert from '@/components/ui/Alert.vue'
-import type { User } from '@/services/userService'
 
+const store = useUserStore()
 const { t } = useI18n()
 const { formatTableDate } = useFormattedDate()
 
 const searchQuery = ref('')
 const roleFilter = ref('')
-const isLoading = ref(false)
-const error = ref('')
-const users = ref<User[]>([])
-const pagination = ref({
-  currentPage: 1,
-  totalPages: 1,
-  total: 0
-})
 
 const columns = computed(() => [
-  { key: 'id', label: 'ID' },
-  { key: 'name', label: t('users.name') },
-  { key: 'email', label: t('users.email') },
-  { key: 'role', label: t('users.role') },
-  { key: 'created_at', label: t('users.created') }
+  { key: 'id', label: 'ID', sortable: true },
+  { key: 'name', label: t('users.name'), sortable: true },
+  { key: 'email', label: t('users.email'), sortable: true },
+  { key: 'role', label: t('users.role'), sortable: true },
+  { key: 'created_at', label: t('users.created'), sortable: true }
 ])
 
-const getRoleVariant = (role: string) => {
-  const variants: Record<string, string> = {
+const pagination = computed(() => ({
+  currentPage: store.currentPage,
+  totalPages: store.totalPages,
+  total: store.total
+}))
+
+const getRoleVariant = (role: string): 'info' | 'warning' | 'danger' | 'default' => {
+  const variants: Record<string, 'info' | 'warning' | 'danger' | 'default'> = {
     admin: 'danger',
     manager: 'warning',
     worker: 'info'
@@ -148,24 +152,34 @@ const formatRole = (role: string) => {
 }
 
 const applyFilters = async () => {
-  // TODO: Implement filtering
+  store.setRoleFilter(roleFilter.value || undefined)
+  store.setSearchQuery(searchQuery.value)
+  store.goToPage(1)
   await loadUsers()
 }
 
+const handleSort = (field: string) => {
+  const newDirection = store.sortField === field && store.sortDirection === 'asc' ? 'desc' : 'asc'
+  store.setSorting(field, newDirection)
+  void loadUsers()
+}
+
+const handleNextPage = () => {
+  store.goToPage(store.currentPage + 1)
+  void loadUsers()
+}
+
+const handlePrevPage = () => {
+  store.goToPage(store.currentPage - 1)
+  void loadUsers()
+}
+
 const loadUsers = async () => {
-  isLoading.value = true
-  try {
-    // TODO: Fetch users from backend
-    error.value = ''
-  } catch (err: any) {
-    error.value = err.message || t('messages.failedToLoadUsers')
-  } finally {
-    isLoading.value = false
-  }
+  await store.fetchUsers()
 }
 
 onMounted(() => {
-  loadUsers()
+  void loadUsers()
 })
 
 defineEmits<{

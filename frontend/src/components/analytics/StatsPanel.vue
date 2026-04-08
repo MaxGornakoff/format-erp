@@ -71,8 +71,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import analyticsService from '@/services/analyticsService'
+import { useAnalyticsStore } from '@/stores/analyticsStore'
 import StatCard from './StatCard.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Alert from '@/components/ui/Alert.vue'
@@ -92,6 +94,7 @@ interface Worker {
 }
 
 const { t } = useI18n()
+const analyticsStore = useAnalyticsStore()
 const isLoading = ref(false)
 const error = ref('')
 const stats = ref<Stats | null>(null)
@@ -100,17 +103,23 @@ const topWorkers = ref<Worker[]>([])
 const loadStatistics = async () => {
   isLoading.value = true
   try {
-    // TODO: Fetch dashboard data
-    // const response = await analyticsService.dashboard()
+    const response = await analyticsService.dashboard()
     error.value = ''
-    // stats.value = response.stats
-    // topWorkers.value = response.topWorkers
+    stats.value = response.stats
+    topWorkers.value = response.top_workers
   } catch (err: any) {
-    error.value = err.message || t('messages.failedToLoadStatistics')
+    error.value = err?.response?.data?.message || err?.message || t('messages.failedToLoadStatistics')
   } finally {
     isLoading.value = false
   }
 }
+
+watch(
+  () => analyticsStore.refreshToken,
+  () => {
+    loadStatistics()
+  }
+)
 
 onMounted(() => {
   loadStatistics()

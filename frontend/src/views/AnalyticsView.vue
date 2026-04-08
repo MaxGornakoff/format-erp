@@ -35,25 +35,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import analyticsService from '@/services/analyticsService'
+import { useAnalyticsStore } from '@/stores/analyticsStore'
 import StatsPanel from '@/components/analytics/StatsPanel.vue'
 import TrendChart from '@/components/analytics/TrendChart.vue'
 import Button from '@/components/ui/Button.vue'
 
+interface ChartPoint {
+  label: string
+  value: number
+}
+
 const { t } = useI18n()
+const analyticsStore = useAnalyticsStore()
 const isLoadingTrend = ref(false)
 const isLoadingRoleStats = ref(false)
 const isRefreshing = ref(false)
-const ordersTrendData = ref<any[]>([])
-const roleStatsData = ref<any[]>([])
+const ordersTrendData = ref<ChartPoint[]>([])
+const roleStatsData = ref<ChartPoint[]>([])
 
 const loadTrendData = async () => {
   isLoadingTrend.value = true
   try {
-    // TODO: Fetch orders trend
-    // const response = await analyticsService.ordersTrend()
-    // ordersTrendData.value = response.data
+    const response = await analyticsService.ordersTrend()
+    ordersTrendData.value = response.data.map((item) => ({
+      label: item.date,
+      value: item.count,
+    }))
+  } catch (err) {
+    console.error('Failed to load trend data:', err)
+    ordersTrendData.value = []
   } finally {
     isLoadingTrend.value = false
   }
@@ -62,9 +75,15 @@ const loadTrendData = async () => {
 const loadRoleStats = async () => {
   isLoadingRoleStats.value = true
   try {
-    // TODO: Fetch role statistics
-    // const response = await analyticsService.roleStats()
-    // roleStatsData.value = response.data
+    const response = await analyticsService.roleStats()
+    roleStatsData.value = [
+      { label: t('users.roles.admin'), value: response.admins },
+      { label: t('users.roles.manager'), value: response.managers },
+      { label: t('users.roles.worker'), value: response.workers },
+    ]
+  } catch (err) {
+    console.error('Failed to load role stats:', err)
+    roleStatsData.value = []
   } finally {
     isLoadingRoleStats.value = false
   }
@@ -78,6 +97,13 @@ const refreshData = async () => {
     isRefreshing.value = false
   }
 }
+
+watch(
+  () => analyticsStore.refreshToken,
+  () => {
+    refreshData()
+  }
+)
 
 onMounted(() => {
   refreshData()

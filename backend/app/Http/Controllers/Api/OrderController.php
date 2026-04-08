@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderRequest;
 use App\Models\Order;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
@@ -15,38 +18,33 @@ class OrderController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Order::with('user');
+        $query = Order::with(['user:id,name,email,role']);
         $user = $request->user();
 
-        // Filter based on role
         if ($user->role === 'worker') {
             $query->where('user_id', $user->id);
-        } elseif ($user->role === 'manager') {
-            // Manager sees only their team's orders (simplified: all for now)
-            // In production, implement team logic
         }
-        // Admin sees all orders
 
-        // Filter by status if provided
         if ($request->status) {
             $query->where('status', $request->status);
         }
 
-        // Search by title or description
         if ($request->search) {
-            $query->where(function ($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->search . '%')
-                  ->orWhere('description', 'like', '%' . $request->search . '%');
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%')
+                    ->orWhere('note', 'like', '%' . $search . '%')
+                    ->orWhere('id', 'like', '%' . $search . '%');
             });
         }
 
-        // Sorting
-        $sort = $request->sort ?? 'created_at';
-        $direction = $request->direction ?? 'desc';
+        $allowedSorts = ['id', 'created_at', 'updated_at', 'status', 'priority', 'package_cost', 'order_cost', 'user_id'];
+        $sort = in_array($request->sort, $allowedSorts, true) ? $request->sort : 'created_at';
+        $direction = $request->direction === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sort, $direction);
 
-        // Pagination
-        $perPage = $request->per_page ?? 15;
+        $perPage = (int) ($request->per_page ?? 15);
         $orders = $query->paginate($perPage);
 
         return response()->json($orders);
@@ -59,14 +57,50 @@ class OrderController extends Controller
     {
         $this->authorize('create', Order::class);
 
+        $data = $request->validated();
+        $currentUser = $request->user();
+        $assignedUserId = $currentUser->id;
+
+        if (in_array($currentUser->role, ['manager', 'admin'], true)) {
+            if (empty($data['user_id'])) {
+                throw ValidationException::withMessages([
+                    'user_id' => 'Please select a worker executor.',
+                ]);
+            }
+
+            $worker = User::where('role', 'worker')->find($data['user_id']);
+
+            if (! $worker) {
+                throw ValidationException::withMessages([
+                    'user_id' => 'Selected executor must be a worker.',
+                ]);
+            }
+
+            $assignedUserId = $worker->id;
+        }
+
+        $generatedTitle = trim((string) ($data['title'] ?? ''));
+
+        if ($generatedTitle === '') {
+            $generatedTitle = Str::limit(trim($data['description']), 80, '');
+        }
+
+        if ($generatedTitle === '') {
+            $generatedTitle = 'Order ' . now()->format('YmdHis');
+        }
+
         $order = Order::create([
-            'title' => $request->title,
-            'description' => $request->description,
-            'status' => $request->status ?? 'new',
-            'user_id' => $request->user()->id,
+            'title' => $generatedTitle,
+            'description' => $data['description'],
+            'note' => $data['note'] ?? null,
+            'package_cost' => $data['package_cost'] ?? null,
+            'order_cost' => $data['order_cost'] ?? null,
+            'priority' => $data['priority'] ?? 'medium',
+            'status' => 'new',
+            'user_id' => $assignedUserId,
         ]);
 
-        return response()->json($order->load('user'), 201);
+        return response()->json($order->load('user:id,name,email,role'), 201);
     }
 
     /**
@@ -76,7 +110,7 @@ class OrderController extends Controller
     {
         $this->authorize('view', $order);
 
-        return response()->json($order->load('user'));
+        return response()->json($order->load('user:id,name,email,role'));
     }
 
     /**
@@ -86,9 +120,30 @@ class OrderController extends Controller
     {
         $this->authorize('update', $order);
 
-        $order->update($request->validated());
+        $data = $request->validated();
+        $currentUser = $request->user();
 
-        return response()->json($order->load('user'));
+        if (array_key_exists('user_id', $data)) {
+            if (! in_array($currentUser->role, ['manager', 'admin'], true)) {
+                unset($data['user_id']);
+            } else {
+                $worker = User::where('role', 'worker')->find($data['user_id']);
+
+                if (! $worker) {
+                    throw ValidationException::withMessages([
+                        'user_id' => 'Selected executor must be a worker.',
+                    ]);
+                }
+            }
+        }
+
+        if (array_key_exists('description', $data) && empty($data['title'])) {
+            $data['title'] = Str::limit(trim((string) $data['description']), 80, '');
+        }
+
+        $order->update($data);
+
+        return response()->json($order->load('user:id,name,email,role'));
     }
 
     /**
