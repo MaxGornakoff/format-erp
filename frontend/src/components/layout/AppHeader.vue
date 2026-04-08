@@ -1,6 +1,9 @@
 <template>
   <header class="bg-gray-900 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-    <img :src="logo" alt="Format Management logo" class="h-10 w-auto object-contain" />
+    <div class="logo flex items-center gap-3 text-white font-semibold uppercase text-lg">
+      <img :src="logo" alt="Format Management logo" class="h-10 w-auto object-contain" />
+      <p>Управление заказами</p>
+    </div>
     <div class="flex items-center space-x-4">
       <span class="text-sm text-gray-600">{{ authStore.user?.name }}</span>
       <button

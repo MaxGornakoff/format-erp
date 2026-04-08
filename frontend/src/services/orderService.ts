@@ -44,6 +44,11 @@ export interface UpdateOrderPayload {
   user_id?: number
 }
 
+export interface OrderTotals {
+  order_cost: number
+  package_cost: number
+}
+
 export interface OrdersResponse {
   data: Order[]
   current_page: number
@@ -52,6 +57,7 @@ export interface OrdersResponse {
   total: number
   per_page: number
   last_page: number
+  totals?: OrderTotals
 }
 
 const orderService = {
@@ -71,7 +77,8 @@ const orderService = {
     status?: string,
     search?: string,
     sort: string = 'created_at',
-    direction: string = 'desc'
+    direction: string = 'desc',
+    userId?: string,
   ): Promise<OrdersResponse> {
     const response = await api.get('/orders', {
       params: {
@@ -81,6 +88,7 @@ const orderService = {
         search,
         sort,
         direction,
+        user_id: userId,
       },
     })
     return response.data
@@ -93,6 +101,27 @@ const orderService = {
    */
   async getOrder(id: number): Promise<Order> {
     const response = await api.get(`/orders/${id}`)
+    return response.data
+  },
+
+  async exportOrders(
+    status?: string,
+    search?: string,
+    sort: string = 'created_at',
+    direction: string = 'desc',
+    userId?: string,
+  ): Promise<Blob> {
+    const response = await api.get('/orders/export', {
+      params: {
+        status,
+        search,
+        sort,
+        direction,
+        user_id: userId,
+      },
+      responseType: 'blob',
+    })
+
     return response.data
   },
 

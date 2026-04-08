@@ -5,6 +5,7 @@ export interface User {
   name: string
   email: string
   role: 'worker' | 'manager' | 'admin'
+  is_tracked: boolean
   created_at: string
   updated_at: string
 }
@@ -14,12 +15,14 @@ export interface CreateUserPayload {
   email: string
   password: string
   role: 'worker' | 'manager' | 'admin'
+  is_tracked?: boolean
 }
 
 export interface UpdateUserPayload {
   name?: string
   email?: string
   role?: 'worker' | 'manager' | 'admin'
+  is_tracked?: boolean
 }
 
 export interface UsersResponse {

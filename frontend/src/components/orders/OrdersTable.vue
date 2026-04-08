@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="bg-white p-4 rounded-lg border border-gray-200 mb-4">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Input
           v-model="searchQuery"
           :label="$t('common.search')"
@@ -10,10 +10,9 @@
         />
 
         <div>
-        
           <select
             v-model="statusFilter"
-            class="w-full text-[14px] h-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full text-[14px] h-10 px-3 py-2 pr-10 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             @change="applyFilters"
           >
             <option value="">{{ $t('orders.filters.allStatuses') }}</option>
@@ -24,9 +23,25 @@
           </select>
         </div>
 
-        <div class="flex items-end gap-2">
-          <Button variant="secondary" @click="loadOrders">
+        <div v-if="canFilterByExecutor">
+          <select
+            v-model="executorFilter"
+            class="w-full text-[14px] h-10 px-3 py-2 pr-10 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            @change="applyFilters"
+          >
+            <option value="">{{ $t('orders.filters.allExecutors') }}</option>
+            <option v-for="worker in workerOptions" :key="worker.id" :value="String(worker.id)">
+              {{ worker.name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="flex items-end gap-2 flex-wrap" :class="canFilterByExecutor ? 'md:justify-end' : 'md:col-span-2'">
+          <Button variant="secondary" disable-focus-styles @click="loadOrders">
             {{ $t('common.refresh') }}
+          </Button>
+          <Button variant="ghost" disable-focus-styles @click="resetFilters">
+            {{ $t('common.resetFilters') }}
           </Button>
         </div>
       </div>
@@ -77,7 +92,7 @@
         <div
           class="min-w-[12.5rem] max-w-[19.5rem] overflow-hidden text-sm text-gray-700 leading-5"
           :title="row.description || '—'"
-          style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;"
+          style="display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical;"
         >
           {{ row.description || '—' }}
         </div>
@@ -111,6 +126,19 @@
         </div>
       </template>
 
+      <template #pagination-left-extra>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
+          <p class="whitespace-nowrap">
+            <span class="font-medium text-gray-700">{{ $t('orders.totals.orderCost') }}:</span>
+            <span class="ml-1 font-semibold text-gray-900">{{ formatCurrency(store.filteredOrderCostTotal) }}</span>
+          </p>
+          <p class="whitespace-nowrap">
+            <span class="font-medium text-gray-700">{{ $t('orders.totals.packageCost') }}:</span>
+            <span class="ml-1 font-semibold text-gray-900">{{ formatCurrency(store.filteredPackageCostTotal) }}</span>
+          </p>
+        </div>
+      </template>
+
       <template v-if="isAdmin" #actions="{ row }">
         <div class="flex gap-2 justify-center">
           <Button
@@ -133,18 +161,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useOrderStore } from '@/stores/orderStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useI18n } from 'vue-i18n'
 import { useFormattedDate } from '@/composables/useFormattedDate'
+import userService, { type User } from '@/services/userService'
+import type { OrderPriority, OrderStatus } from '@/services/orderService'
 import Table from '@/components/ui/Table.vue'
 import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Alert from '@/components/ui/Alert.vue'
-import type { OrderPriority, OrderStatus } from '@/services/orderService'
 
+const route = useRoute()
+const router = useRouter()
 const store = useOrderStore()
 const authStore = useAuthStore()
 const { t } = useI18n()
@@ -152,6 +184,8 @@ const { formatTableDate } = useFormattedDate()
 
 const searchQuery = ref('')
 const statusFilter = ref('')
+const executorFilter = ref('')
+const workerOptions = ref<User[]>([])
 
 const columns = computed(() => [
   { key: 'id', label: t('orders.orderNumberShort'), sortable: true },
@@ -172,6 +206,7 @@ const pagination = computed(() => ({
 }))
 
 const isAdmin = computed(() => authStore.isAdmin)
+const canFilterByExecutor = computed(() => !authStore.isWorker)
 
 const getStatusVariant = (status: OrderStatus): 'info' | 'warning' | 'success' | 'danger' | 'default' => {
   const variants: Record<OrderStatus, 'info' | 'warning' | 'success' | 'danger'> = {
@@ -233,11 +268,53 @@ const handleRowClick = (row: any) => {
   emit('view', row.id)
 }
 
+const allowedStatuses: OrderStatus[] = ['new', 'in_progress', 'completed', 'cancelled']
+
+const syncFiltersFromRoute = () => {
+  const routeStatus = typeof route.query.status === 'string' ? route.query.status : ''
+  const routeSearch = typeof route.query.search === 'string' ? route.query.search : ''
+  const routeExecutor = typeof route.query.executor === 'string' ? route.query.executor : ''
+  const normalizedStatus = allowedStatuses.includes(routeStatus as OrderStatus)
+    ? routeStatus as OrderStatus
+    : ''
+
+  statusFilter.value = normalizedStatus
+  searchQuery.value = routeSearch
+  executorFilter.value = routeExecutor
+  store.setStatusFilter(normalizedStatus || undefined)
+  store.setExecutorFilter(routeExecutor || undefined)
+  store.setSearchQuery(routeSearch)
+}
+
+const buildFilterQuery = () => {
+  const query: Record<string, string> = {}
+
+  if (statusFilter.value) {
+    query.status = statusFilter.value
+  }
+
+  if (searchQuery.value.trim()) {
+    query.search = searchQuery.value.trim()
+  }
+
+  if (executorFilter.value) {
+    query.executor = executorFilter.value
+  }
+
+  return query
+}
+
 const applyFilters = async () => {
-  store.setStatusFilter(statusFilter.value)
-  store.setSearchQuery(searchQuery.value)
   store.goToPage(1)
-  await loadOrders()
+  await router.replace({ query: buildFilterQuery() })
+}
+
+const resetFilters = async () => {
+  searchQuery.value = ''
+  statusFilter.value = ''
+  executorFilter.value = ''
+  store.resetFilters()
+  await router.replace({ query: {} })
 }
 
 const handleSort = (field: string) => {
@@ -260,8 +337,31 @@ const loadOrders = async () => {
   await store.fetchOrders()
 }
 
+const loadWorkers = async () => {
+  if (!canFilterByExecutor.value) {
+    workerOptions.value = []
+    return
+  }
+
+  try {
+    const response = await userService.getUsers(1, 100, 'worker')
+    workerOptions.value = [...response.data].sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+  } catch {
+    workerOptions.value = []
+  }
+}
+
+watch(
+  () => [route.query.status, route.query.search, route.query.executor],
+  async () => {
+    syncFiltersFromRoute()
+    await loadOrders()
+  },
+  { immediate: true }
+)
+
 onMounted(() => {
-  loadOrders()
+  void loadWorkers()
 })
 
 const emit = defineEmits<{

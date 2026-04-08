@@ -22,6 +22,8 @@
         :value="stats?.total_orders || 0"
         icon="📊"
         color="blue"
+        clickable
+        @click="goToOrders()"
       />
 
       <!-- New Orders -->
@@ -30,6 +32,8 @@
         :value="stats?.new_orders || 0"
         icon="📝"
         color="blue"
+        clickable
+        @click="goToOrders('new')"
       />
 
       <!-- In Progress -->
@@ -38,6 +42,8 @@
         :value="stats?.in_progress_orders || 0"
         icon="⏳"
         color="yellow"
+        clickable
+        @click="goToOrders('in_progress')"
       />
 
       <!-- Completed -->
@@ -46,6 +52,8 @@
         :value="stats?.completed_orders || 0"
         icon="✅"
         color="green"
+        clickable
+        @click="goToOrders('completed')"
       />
     </div>
 
@@ -72,6 +80,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import analyticsService from '@/services/analyticsService'
 import { useAnalyticsStore } from '@/stores/analyticsStore'
@@ -93,6 +102,9 @@ interface Worker {
   completed_count: number
 }
 
+type OrderStatusFilter = '' | 'new' | 'in_progress' | 'completed' | 'cancelled'
+
+const router = useRouter()
 const { t } = useI18n()
 const analyticsStore = useAnalyticsStore()
 const isLoading = ref(false)
@@ -112,6 +124,13 @@ const loadStatistics = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+const goToOrders = (status: OrderStatusFilter = '') => {
+  router.push({
+    name: 'Orders',
+    query: status ? { status } : {},
+  })
 }
 
 watch(

@@ -28,8 +28,11 @@ export const useOrderStore = defineStore('order', () => {
   const perPage = ref(15)
   const total = ref(0)
   const lastPage = ref(1)
+  const filteredOrderCostTotal = ref(0)
+  const filteredPackageCostTotal = ref(0)
 
   const statusFilter = ref<string | undefined>(undefined)
+  const executorFilter = ref<string | undefined>(undefined)
   const searchQuery = ref('')
   const sortField = ref('created_at')
   const sortDirection = ref<'asc' | 'desc'>('desc')
@@ -49,13 +52,16 @@ export const useOrderStore = defineStore('order', () => {
         statusFilter.value,
         searchQuery.value || undefined,
         sortField.value,
-        sortDirection.value
+        sortDirection.value,
+        executorFilter.value,
       )
 
       orders.value = response.data
       currentPage.value = response.current_page
       total.value = response.total
       lastPage.value = response.last_page || 1
+      filteredOrderCostTotal.value = Number(response.totals?.order_cost ?? 0)
+      filteredPackageCostTotal.value = Number(response.totals?.package_cost ?? 0)
     } catch (err: any) {
       error.value = getErrorMessage(err, 'Failed to fetch orders')
       throw err
@@ -149,6 +155,11 @@ export const useOrderStore = defineStore('order', () => {
     currentPage.value = 1
   }
 
+  const setExecutorFilter = (executorId: string | undefined) => {
+    executorFilter.value = executorId || undefined
+    currentPage.value = 1
+  }
+
   const setSearchQuery = (query: string) => {
     searchQuery.value = query
     currentPage.value = 1
@@ -169,6 +180,7 @@ export const useOrderStore = defineStore('order', () => {
 
   const resetFilters = () => {
     statusFilter.value = undefined
+    executorFilter.value = undefined
     searchQuery.value = ''
     sortField.value = 'created_at'
     sortDirection.value = 'desc'
@@ -184,7 +196,10 @@ export const useOrderStore = defineStore('order', () => {
     perPage,
     total,
     lastPage,
+    filteredOrderCostTotal,
+    filteredPackageCostTotal,
     statusFilter,
+    executorFilter,
     searchQuery,
     sortField,
     sortDirection,
@@ -197,6 +212,7 @@ export const useOrderStore = defineStore('order', () => {
     updateOrder,
     deleteOrder,
     setStatusFilter,
+    setExecutorFilter,
     setSearchQuery,
     setSorting,
     goToPage,

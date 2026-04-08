@@ -68,6 +68,12 @@
         </Badge>
       </template>
 
+      <template #cell-is_tracked="{ row }">
+        <Badge :variant="row.is_tracked ? 'success' : 'default'">
+          {{ row.is_tracked ? $t('users.tracked') : $t('users.notTracked') }}
+        </Badge>
+      </template>
+
       <!-- Created Cell -->
       <template #cell-created_at="{ value }">
         {{ formatTableDate(String(value ?? '')) }}
@@ -126,6 +132,7 @@ const columns = computed(() => [
   { key: 'name', label: t('users.name'), sortable: true },
   { key: 'email', label: t('users.email'), sortable: true },
   { key: 'role', label: t('users.role'), sortable: true },
+  { key: 'is_tracked', label: t('users.tracking'), sortable: true },
   { key: 'created_at', label: t('users.created'), sortable: true }
 ])
 

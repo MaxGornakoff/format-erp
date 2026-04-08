@@ -80,11 +80,30 @@
     </div>
   </div>
 
-  <div v-if="pagination" class="mt-4 flex items-center justify-between gap-4">
+  <div v-if="pagination" class="mt-4 flex flex-wrap items-center justify-between gap-3">
     <div class="flex items-center gap-3 flex-wrap">
       <p class="text-sm text-gray-600">
         {{ $t('common.page') }} {{ pagination.currentPage }} {{ $t('common.of') }} {{ pagination.totalPages }} ({{ pagination.total }} {{ $t('common.total') }})
       </p>
+
+      <div class="flex items-center gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          :disabled="pagination.currentPage === 1"
+          @click="$emit('prev-page')"
+        >
+          <span aria-hidden="true">←</span>
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          :disabled="pagination.currentPage === pagination.totalPages"
+          @click="$emit('next-page')"
+        >
+          <span aria-hidden="true">→</span>
+        </Button>
+      </div>
 
       <Button
         v-if="reorderableColumns && canResetColumns"
@@ -96,23 +115,8 @@
       </Button>
     </div>
 
-    <div class="flex gap-2">
-      <Button
-        variant="secondary"
-        size="sm"
-        :disabled="pagination.currentPage === 1"
-        @click="$emit('prev-page')"
-      >
-        {{ $t('common.previous') }}
-      </Button>
-      <Button
-        variant="secondary"
-        size="sm"
-        :disabled="pagination.currentPage === pagination.totalPages"
-        @click="$emit('next-page')"
-      >
-        {{ $t('common.next') }}
-      </Button>
+    <div class="flex justify-end">
+      <slot name="pagination-left-extra" :pagination="pagination" />
     </div>
   </div>
 </template>

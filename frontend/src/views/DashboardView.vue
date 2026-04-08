@@ -67,6 +67,15 @@
           {{ $t('dashboard.manageUsers') }}
         </Button>
       </div>
+
+      <!-- History Card (for Admin) -->
+      <div v-if="isAdmin" class="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">🕘 {{ $t('dashboard.historyManagement') }}</h2>
+        <p class="text-gray-600 mb-4">{{ $t('dashboard.historyDescription') }}</p>
+        <Button @click="$router.push('/history')" class="w-full">
+          {{ $t('dashboard.viewHistory') }}
+        </Button>
+      </div>
     </div>
 
     <!-- Quick Help -->
@@ -77,6 +86,7 @@
         <li>✅ {{ $t('dashboard.checkProfile') }}</li>
         <li v-if="isManagerOrAdmin">✅ {{ $t('dashboard.monitorTeam') }}</li>
         <li v-if="isAdmin">✅ {{ $t('dashboard.manageUsersAdmin') }}</li>
+        <li v-if="isAdmin">✅ {{ $t('dashboard.reviewHistoryAdmin') }}</li>
       </ul>
     </div>
   </div>

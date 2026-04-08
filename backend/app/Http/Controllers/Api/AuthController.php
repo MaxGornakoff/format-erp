@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -45,6 +46,15 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
+        ActivityLogger::log(
+            $request->user(),
+            'session.login',
+            $request,
+            'session',
+            null,
+            'Logged into the system',
+        );
+
         return response()->json([
             'user' => $request->user(),
         ]);
@@ -55,6 +65,17 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
+        $user = $request->user();
+
+        ActivityLogger::log(
+            $user,
+            'session.logout',
+            $request,
+            'session',
+            null,
+            'Logged out of the system',
+        );
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

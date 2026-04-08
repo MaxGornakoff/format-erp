@@ -11,6 +11,7 @@ export const ru = {
     search: 'Поиск',
     filter: 'Фильтр',
     refresh: 'Обновить',
+    exportExcel: 'Экспорт в Excel',
     loading: 'Загрузка...',
     error: 'Ошибка',
     success: 'Успешно',
@@ -23,7 +24,8 @@ export const ru = {
     previous: 'Предыдущая',
     next: 'Следующая',
     actions: 'Действия',
-    resetColumns: 'Сбросить порядок колонок'
+    resetColumns: 'Сбросить порядок колонок',
+    resetFilters: 'Сбросить фильтры'
   },
 
   auth: {
@@ -45,9 +47,10 @@ export const ru = {
 
   navigation: {
     dashboard: 'Панель управления',
-    orders: 'Заявки',
+    orders: 'Заказы',
     users: 'Пользователи',
     analytics: 'Аналитика',
+    history: 'История',
     profile: 'Профиль',
     settings: 'Настройки'
   },
@@ -60,32 +63,36 @@ export const ru = {
     memberSince: 'Участник с',
     status: 'Статус',
     active: 'Активен',
-    ordersManagement: 'Управление заявками',
-    ordersDescription: 'Просмотр и управление всеми заявками',
-    goToOrders: 'Перейти к заявкам',
+    ordersManagement: 'Управление заказами',
+    ordersDescription: 'Просмотр и управление всеми заказами',
+    goToOrders: 'Перейти к заказам',
     analytics: 'Аналитика',
     analyticsDescription: 'Просмотр детальной статистики и отчетов',
     viewAnalytics: 'Просмотр аналитики',
     usersManagement: 'Управление пользователями',
     usersDescription: 'Управление системными пользователями и их ролями',
     manageUsers: 'Управление пользователями',
+    historyManagement: 'История действий',
+    historyDescription: 'Просмотр журнала действий пользователей и событий системы',
+    viewHistory: 'Открыть историю',
     gettingStarted: 'Начало работы',
-    startByCreating: 'Начните с создания новой заявки',
+    startByCreating: 'Начните с создания нового заказа',
     checkProfile: 'Узнайте свой профиль в меню сверху справа',
     monitorTeam: 'Отслеживайте производительность команды в Аналитике',
-    manageUsersAdmin: 'Управляйте пользователями и назначайте роли'
+    manageUsersAdmin: 'Управляйте пользователями и назначайте роли',
+    reviewHistoryAdmin: 'Просматривайте историю действий пользователей и системы'
   },
 
   orders: {
-    title: 'Управление заявками',
+    title: 'Управление заказами',
     formTitle: 'Тема',
-    formTitlePlaceholder: 'Введите тему заявки',
+    formTitlePlaceholder: 'Введите тему заказа',
     formDescription: 'Описание',
     formDescriptionPlaceholder: 'Введите описание заказа',
     note: 'Примечание',
     notePlaceholder: 'Введите дополнительное примечание',
-    packageCost: 'Стоимость пакета',
-    packageCostPlaceholder: 'Введите стоимость пакета',
+    packageCost: 'Стоимость макета',
+    packageCostPlaceholder: 'Введите стоимость макета',
     orderCost: 'Стоимость заказа',
     orderCostPlaceholder: 'Введите стоимость заказа',
     priority: 'Срочность',
@@ -94,20 +101,24 @@ export const ru = {
     autoAssignedWorker: 'Исполнитель назначается автоматически',
     date: 'Дата',
     orderNumberShort: '№ Заказа',
-    description: 'Просмотр и управление всеми заявками',
-    newOrder: '+ Новая заявка',
-    createOrder: 'Создать заявку',
-    editOrder: 'Редактировать заявку',
-    orderDetails: 'Детали заявки',
+    description: 'Просмотр и управление всеми заказами',
+    newOrder: '+ Новый заказ',
+    createOrder: 'Создать заказ',
+    editOrder: 'Редактировать заказ',
+    orderDetails: 'Детали заказа',
     orderNumber: 'Заказ #',
     createdBy: 'Исполнитель',
     createdAt: 'Дата создания',
     updatedAt: 'Обновлено',
     viewOrder: 'Просмотр',
     deleteOrder: 'Удалить',
-    confirmDelete: 'Вы уверены, что хотите удалить эту заявку?',
+    confirmDelete: 'Вы уверены, что хотите удалить этот заказ?',
     status: 'Статус',
     changeStatus: 'Изменить статус',
+    totals: {
+      orderCost: 'Сумма заказов',
+      packageCost: 'Сумма макетов'
+    },
 
     priorities: {
       low: 'Низкая',
@@ -116,15 +127,16 @@ export const ru = {
     },
 
     statuses: {
-      new: 'Новая',
+      new: 'Новый',
       in_progress: 'В процессе',
-      completed: 'Выполнена',
-      cancelled: 'Отменена'
+      completed: 'Выполнен',
+      cancelled: 'Отменён'
     },
 
     filters: {
       searchPlaceholder: 'Поиск по № заказа, описанию или примечанию...',
-      allStatuses: 'Все статусы'
+      allStatuses: 'Все статусы',
+      allExecutors: 'Все исполнители'
     }
   },
 
@@ -138,6 +150,10 @@ export const ru = {
     name: 'Имя',
     email: 'Email',
     role: 'Роль',
+    tracking: 'Отслеживание',
+    trackActivity: 'Отслеживать действия пользователя',
+    tracked: 'Отслеживается',
+    notTracked: 'Не отслеживается',
     created: 'Создано',
     confirmDelete: 'Вы уверены, что хотите удалить этого пользователя?',
     
@@ -153,16 +169,51 @@ export const ru = {
     }
   },
 
+  history: {
+    title: 'История действий',
+    description: 'Журнал основных действий отслеживаемых пользователей: входы, выходы и CRUD-операции.',
+    loading: 'Загрузка истории...',
+    user: 'Пользователь',
+    action: 'Действие',
+    subject: 'Объект',
+    details: 'Детали',
+    time: 'Время',
+    filters: {
+      searchPlaceholder: 'Поиск по пользователю, email или действию...',
+      allActions: 'Все действия'
+    },
+    subjects: {
+      session: 'Сессия',
+      order: 'Заказ',
+      user: 'Пользователь'
+    },
+    actions: {
+      sessionLogin: 'Вход в систему',
+      sessionLogout: 'Выход из системы',
+      orderCreate: 'Создание заказа',
+      orderRead: 'Просмотр заказа',
+      orderUpdate: 'Редактирование заказа',
+      orderDelete: 'Удаление заказа',
+      userCreate: 'Создание пользователя',
+      userRead: 'Просмотр пользователя',
+      userReadList: 'Просмотр списка пользователей',
+      userUpdate: 'Редактирование пользователя',
+      userDelete: 'Удаление пользователя',
+      trackingEnabled: 'Отслеживание включено',
+      trackingDisabled: 'Отслеживание выключено'
+    }
+  },
+
   analytics: {
     title: 'Панель аналитики',
-    description: 'Полный обзор заявок и статистики пользователей',
-    totalOrders: 'Всего заявок',
-    newOrders: 'Новые заявки',
+    description: 'Полный обзор заказов и статистики пользователей',
+    totalOrders: 'Всего заказов',
+    newOrders: 'Новые заказы',
     inProgress: 'В процессе',
     completed: 'Завершено',
     topWorkers: 'Лучшие работники',
     completedCount: 'завершено',
-    ordersTrend: 'Заявки созданы (последние 30 дней)',
+    ordersTrend: 'Заказы созданы (последние 30 дней)',
     usersByRole: 'Пользователи по ролям',
     refreshData: 'Обновить данные',
     noWorkerData: 'Нет данных о работниках',
@@ -183,18 +234,20 @@ export const ru = {
   },
 
   messages: {
-    loadingOrders: 'Загрузка заявок...',
+    loadingOrders: 'Загрузка заказов...',
     loadingUsers: 'Загрузка пользователей...',
     loadingStatistics: 'Загрузка статистики...',
     loadingChartData: 'Загрузка данных графика...',
-    loadingOrderDetails: 'Загрузка деталей заявки...',
-    failedToLoadOrders: 'Не удалось загрузить заявки',
+    loadingOrderDetails: 'Загрузка деталей заказа...',
+    failedToLoadOrders: 'Не удалось загрузить заказы',
     failedToLoadUsers: 'Не удалось загрузить пользователей',
-    failedToLoadOrder: 'Не удалось загрузить заявку',
-    failedToSaveOrder: 'Не удалось сохранить заявку',
-    failedToDeleteOrder: 'Не удалось удалить заявку',
+    failedToLoadOrder: 'Не удалось загрузить заказ',
+    failedToSaveOrder: 'Не удалось сохранить заказ',
+    failedToDeleteOrder: 'Не удалось удалить заказ',
+    failedToExportOrders: 'Не удалось экспортировать заказы',
     failedToSaveUser: 'Не удалось сохранить пользователя',
     failedToDeleteUser: 'Не удалось удалить пользователя',
-    orderNotFound: 'Заявка не найдена'
+    failedToLoadHistory: 'Не удалось загрузить историю действий',
+    orderNotFound: 'Заказ не найден'
   }
 }

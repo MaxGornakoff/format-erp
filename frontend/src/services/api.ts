@@ -45,7 +45,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && !['/login', '/register'].includes(window.location.pathname)) {
+    const status = error.response?.status
+    const requestUrl = String(error.config?.url || '')
+    const isAuthBootstrapRequest = ['/auth/me', '/auth/login', '/auth/register'].some((path) => requestUrl.includes(path))
+
+    if (
+      status === 401 &&
+      typeof window !== 'undefined' &&
+      !isAuthBootstrapRequest &&
+      !['/login', '/register'].includes(window.location.pathname)
+    ) {
       window.location.href = '/login'
     }
 

@@ -40,7 +40,9 @@ export const useAuthStore = defineStore('auth', () => {
           console.error('Init auth error:', err)
         }
 
-        user.value = null
+        if (!user.value) {
+          user.value = null
+        }
       } finally {
         isInitializing.value = false
         isInitialized.value = true
@@ -61,7 +63,9 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await authService.login(payload)
       user.value = response.user
+      isInitializing.value = false
       isInitialized.value = true
+      initPromise = null
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Login failed'
       throw err
@@ -80,7 +84,9 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await authService.register(payload)
       user.value = response.user
+      isInitializing.value = false
       isInitialized.value = true
+      initPromise = null
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Registration failed'
       throw err
@@ -99,7 +105,9 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Logout error:', err)
     } finally {
       user.value = null
+      isInitializing.value = false
       isInitialized.value = true
+      initPromise = null
     }
   }
 

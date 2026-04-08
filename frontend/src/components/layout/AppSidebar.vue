@@ -2,13 +2,13 @@
   <aside
     :class="[
       'shrink-0 bg-white border-r border-[#EEF5FD] min-h-full transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col will-change-[width,padding] shadow-sm',
-      collapsed ? 'w-20 p-3' : 'w-64 p-5'
+      collapsed ? 'w-20 p-3' : 'w-64 px-5 py-3'
     ]"
   >
-    <div :class="['mb-5 flex items-center', collapsed ? 'justify-center' : 'justify-end']">
+    <div :class="['flex items-center', collapsed ? 'justify-center' : 'justify-end']">
       <button
         type="button"
-        class="outline-none inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#205EA6] hover:bg-[#EEF5FD] transition"
+        class="outline-none focus:outline-none inline-flex h-10 w-10 items-center justify-center rounded-xl text-[#205EA6] hover:bg-[#EEF5FD] transition"
         :title="collapsed ? 'Развернуть меню' : 'Свернуть меню'"
         :aria-label="collapsed ? 'Развернуть меню' : 'Свернуть меню'"
         @click="$emit('toggle')"
@@ -51,6 +51,12 @@
           <svg v-else-if="item.key === 'analytics'" viewBox="0 0 20 20" fill="none" class="h-5 w-5" aria-hidden="true">
             <path d="M4 15.5H16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
             <path d="M6.5 13V9.5M10 13V6.5M13.5 13V8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+
+          <svg v-else-if="item.key === 'history'" viewBox="0 0 20 20" fill="none" class="h-5 w-5" aria-hidden="true">
+            <path d="M10 5V10L13 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M17 10A7 7 0 1 1 14.6 4.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            <path d="M14.5 3.5H17V6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
 
           <svg v-else viewBox="0 0 20 20" fill="none" class="h-5 w-5" aria-hidden="true">
@@ -99,7 +105,7 @@ interface Props {
 }
 
 interface NavItem {
-  key: 'dashboard' | 'orders' | 'analytics' | 'users'
+  key: 'dashboard' | 'orders' | 'analytics' | 'users' | 'history'
   to: string
   label: string
   routeNames: string[]
@@ -145,6 +151,14 @@ const visibleNavItems = computed<NavItem[]>(() => {
           to: '/users',
           label: t('navigation.users'),
           routeNames: ['Users'],
+        }
+      : null,
+    authStore.isAdmin
+      ? {
+          key: 'history',
+          to: '/history',
+          label: t('navigation.history'),
+          routeNames: ['History'],
         }
       : null,
   ]

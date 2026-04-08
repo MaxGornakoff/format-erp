@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\ActivityLogController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
 
     // Orders routes
+    Route::get('/orders/export', [OrderController::class, 'export']);
     Route::apiResource('orders', OrderController::class);
 
     // Users routes (admin only)
@@ -38,4 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/analytics/dashboard', [AnalyticsController::class, 'dashboard']);
     Route::get('/analytics/orders-trend', [AnalyticsController::class, 'ordersTrend']);
     Route::get('/analytics/role-stats', [AnalyticsController::class, 'roleStats']);
+
+    // Activity history (admin only)
+    Route::get('/history', [ActivityLogController::class, 'index']);
 });

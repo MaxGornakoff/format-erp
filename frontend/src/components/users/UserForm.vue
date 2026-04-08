@@ -52,6 +52,20 @@
       <p v-if="errors.role" class="mt-1 text-sm text-red-500">{{ errors.role }}</p>
     </div>
 
+    <div class="rounded-lg border border-gray-200 p-3 bg-gray-50">
+      <label class="flex items-start gap-3 cursor-pointer">
+        <input
+          v-model="form.is_tracked"
+          type="checkbox"
+          class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <div>
+          <p class="text-sm font-medium text-gray-900">{{ $t('users.trackActivity') }}</p>
+          <p class="text-xs text-gray-500">{{ $t('history.description') }}</p>
+        </div>
+      </label>
+    </div>
+
     <!-- Error Alert -->
     <Alert
       v-if="generalError"
@@ -95,6 +109,7 @@ interface Props {
     name: string
     email: string
     role: User['role']
+    is_tracked: boolean
   }
 }
 
@@ -108,11 +123,12 @@ const store = useUserStore()
 const { t } = useI18n()
 const isEdit = computed(() => !!props.userId)
 
-const form = ref<{ name: string; email: string; password: string; role: User['role'] }>({
+const form = ref<{ name: string; email: string; password: string; role: User['role']; is_tracked: boolean }>({
   name: '',
   email: '',
   password: '',
-  role: 'worker'
+  role: 'worker',
+  is_tracked: false,
 })
 
 const syncForm = () => {
@@ -121,6 +137,7 @@ const syncForm = () => {
     email: props.initialData?.email || '',
     password: '',
     role: props.initialData?.role || 'worker',
+    is_tracked: props.initialData?.is_tracked || false,
   }
 }
 
@@ -167,6 +184,7 @@ const handleSubmit = async () => {
         name: form.value.name,
         email: form.value.email,
         role: form.value.role,
+        is_tracked: form.value.is_tracked,
       })
     } else {
       await store.createUser({
@@ -174,6 +192,7 @@ const handleSubmit = async () => {
         email: form.value.email,
         password: form.value.password,
         role: form.value.role,
+        is_tracked: form.value.is_tracked,
       })
     }
     generalError.value = ''

@@ -11,6 +11,7 @@ export const en = {
     search: 'Search',
     filter: 'Filter',
     refresh: 'Refresh',
+    exportExcel: 'Export to Excel',
     loading: 'Loading...',
     error: 'Error',
     success: 'Success',
@@ -23,7 +24,8 @@ export const en = {
     previous: 'Previous',
     next: 'Next',
     actions: 'Actions',
-    resetColumns: 'Reset column order'
+    resetColumns: 'Reset column order',
+    resetFilters: 'Reset filters'
   },
 
   auth: {
@@ -48,6 +50,7 @@ export const en = {
     orders: 'Orders',
     users: 'Users',
     analytics: 'Analytics',
+    history: 'History',
     profile: 'Profile',
     settings: 'Settings'
   },
@@ -69,11 +72,15 @@ export const en = {
     usersManagement: 'User Management',
     usersDescription: 'Manage system users and their roles',
     manageUsers: 'Manage Users',
+    historyManagement: 'Activity History',
+    historyDescription: 'Review user actions and system event logs',
+    viewHistory: 'Open History',
     gettingStarted: 'Getting Started',
     startByCreating: 'Start by creating a new order',
     checkProfile: 'Check your profile in the top right menu',
     monitorTeam: 'Monitor team performance in Analytics',
-    manageUsersAdmin: 'Manage users and assign roles'
+    manageUsersAdmin: 'Manage users and assign roles',
+    reviewHistoryAdmin: 'Review user and system activity history'
   },
 
   orders: {
@@ -85,8 +92,8 @@ export const en = {
     formDescriptionPlaceholder: 'Enter order description',
     note: 'Note',
     notePlaceholder: 'Enter additional note',
-    packageCost: 'Package Cost',
-    packageCostPlaceholder: 'Enter package cost',
+    packageCost: 'Layout Cost',
+    packageCostPlaceholder: 'Enter layout cost',
     orderCost: 'Order Cost',
     orderCostPlaceholder: 'Enter order cost',
     priority: 'Priority',
@@ -108,6 +115,10 @@ export const en = {
     confirmDelete: 'Are you sure you want to delete this order?',
     status: 'Status',
     changeStatus: 'Change Status',
+    totals: {
+      orderCost: 'Total order amount',
+      packageCost: 'Total layout amount'
+    },
 
     priorities: {
       low: 'Low',
@@ -124,7 +135,8 @@ export const en = {
 
     filters: {
       searchPlaceholder: 'Search by order #, description, or note...',
-      allStatuses: 'All Statuses'
+      allStatuses: 'All Statuses',
+      allExecutors: 'All executors'
     }
   },
 
@@ -138,6 +150,10 @@ export const en = {
     name: 'Name',
     email: 'Email',
     role: 'Role',
+    tracking: 'Tracking',
+    trackActivity: 'Track user activity',
+    tracked: 'Tracked',
+    notTracked: 'Not tracked',
     created: 'Created',
     confirmDelete: 'Are you sure you want to delete this user?',
     
@@ -150,6 +166,41 @@ export const en = {
     filters: {
       searchPlaceholder: 'Search by name or email...',
       allRoles: 'All Roles'
+    }
+  },
+
+  history: {
+    title: 'Activity History',
+    description: 'Log of key actions performed by tracked users: sign-ins, sign-outs, and CRUD operations.',
+    loading: 'Loading history...',
+    user: 'User',
+    action: 'Action',
+    subject: 'Subject',
+    details: 'Details',
+    time: 'Time',
+    filters: {
+      searchPlaceholder: 'Search by user, email, or action...',
+      allActions: 'All actions'
+    },
+    subjects: {
+      session: 'Session',
+      order: 'Order',
+      user: 'User'
+    },
+    actions: {
+      sessionLogin: 'Signed in',
+      sessionLogout: 'Signed out',
+      orderCreate: 'Created order',
+      orderRead: 'Viewed order',
+      orderUpdate: 'Updated order',
+      orderDelete: 'Deleted order',
+      userCreate: 'Created user',
+      userRead: 'Viewed user',
+      userReadList: 'Viewed user list',
+      userUpdate: 'Updated user',
+      userDelete: 'Deleted user',
+      trackingEnabled: 'Tracking enabled',
+      trackingDisabled: 'Tracking disabled'
     }
   },
 
@@ -193,8 +244,10 @@ export const en = {
     failedToLoadOrder: 'Failed to load order',
     failedToSaveOrder: 'Failed to save order',
     failedToDeleteOrder: 'Failed to delete order',
+    failedToExportOrders: 'Failed to export orders',
     failedToSaveUser: 'Failed to save user',
     failedToDeleteUser: 'Failed to delete user',
+    failedToLoadHistory: 'Failed to load activity history',
     orderNotFound: 'Order not found'
   }
 }

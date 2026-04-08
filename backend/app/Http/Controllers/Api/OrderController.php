@@ -7,6 +7,7 @@ use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderRequest;
 use App\Models\Order;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -18,26 +19,12 @@ class OrderController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Order::with(['user:id,name,email,role']);
-        $user = $request->user();
+        $query = $this->buildFilteredQuery($request);
 
-        if ($user->role === 'worker') {
-            $query->where('user_id', $user->id);
-        }
-
-        if ($request->status) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->search) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', '%' . $search . '%')
-                    ->orWhere('description', 'like', '%' . $search . '%')
-                    ->orWhere('note', 'like', '%' . $search . '%')
-                    ->orWhere('id', 'like', '%' . $search . '%');
-            });
-        }
+        $totals = [
+            'order_cost' => (float) ((clone $query)->sum('order_cost') ?? 0),
+            'package_cost' => (float) ((clone $query)->sum('package_cost') ?? 0),
+        ];
 
         $allowedSorts = ['id', 'created_at', 'updated_at', 'status', 'priority', 'package_cost', 'order_cost', 'user_id'];
         $sort = in_array($request->sort, $allowedSorts, true) ? $request->sort : 'created_at';
@@ -47,7 +34,72 @@ class OrderController extends Controller
         $perPage = (int) ($request->per_page ?? 15);
         $orders = $query->paginate($perPage);
 
-        return response()->json($orders);
+        $payload = $orders->toArray();
+        $payload['totals'] = $totals;
+
+        return response()->json($payload);
+    }
+
+    public function export(Request $request)
+    {
+        abort_unless($request->user()?->role === 'admin', 403);
+
+        $query = $this->buildFilteredQuery($request);
+        $allowedSorts = ['id', 'created_at', 'updated_at', 'status', 'priority', 'package_cost', 'order_cost', 'user_id'];
+        $sort = in_array($request->sort, $allowedSorts, true) ? $request->sort : 'created_at';
+        $direction = $request->direction === 'asc' ? 'asc' : 'desc';
+
+        $totals = [
+            'order_cost' => (float) ((clone $query)->sum('order_cost') ?? 0),
+            'package_cost' => (float) ((clone $query)->sum('package_cost') ?? 0),
+        ];
+
+        $orders = $query->orderBy($sort, $direction)->get();
+        $fileName = 'orders-export-' . now()->format('Y-m-d_H-i-s') . '.csv';
+
+        return response()->streamDownload(function () use ($orders, $totals) {
+            $handle = fopen('php://output', 'w');
+
+            if ($handle === false) {
+                return;
+            }
+
+            fwrite($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, [
+                '№ Заказа',
+                'Дата',
+                'Исполнитель',
+                'Описание',
+                'Примечание',
+                'Стоимость макета',
+                'Стоимость заказа',
+                'Срочность',
+                'Статус',
+            ], ';');
+
+            foreach ($orders as $order) {
+                fputcsv($handle, [
+                    $order->id,
+                    optional($order->created_at)?->format('d.m.Y H:i'),
+                    $order->user?->name ?? '—',
+                    $order->description,
+                    $order->note ?? '',
+                    $order->package_cost,
+                    $order->order_cost,
+                    $this->formatPriorityLabel((string) $order->priority),
+                    $this->formatStatusLabel((string) $order->status),
+                ], ';');
+            }
+
+            fputcsv($handle, [], ';');
+            fputcsv($handle, ['Итоги'], ';');
+            fputcsv($handle, ['Сумма макетов', number_format((float) $totals['package_cost'], 2, '.', ' ')], ';');
+            fputcsv($handle, ['Сумма заказов', number_format((float) $totals['order_cost'], 2, '.', ' ')], ';');
+
+            fclose($handle);
+        }, $fileName, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     /**
@@ -100,15 +152,36 @@ class OrderController extends Controller
             'user_id' => $assignedUserId,
         ]);
 
+        ActivityLogger::log(
+            $currentUser,
+            'order.create',
+            $request,
+            'order',
+            $order->id,
+            'Created a new order',
+            [
+                'assigned_user_id' => $assignedUserId,
+            ],
+        );
+
         return response()->json($order->load('user:id,name,email,role'), 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Order $order)
+    public function show(Request $request, Order $order)
     {
         $this->authorize('view', $order);
+
+        ActivityLogger::log(
+            $request->user(),
+            'order.read',
+            $request,
+            'order',
+            $order->id,
+            'Viewed an order',
+        );
 
         return response()->json($order->load('user:id,name,email,role'));
     }
@@ -143,18 +216,90 @@ class OrderController extends Controller
 
         $order->update($data);
 
+        ActivityLogger::log(
+            $currentUser,
+            'order.update',
+            $request,
+            'order',
+            $order->id,
+            'Updated an order',
+            [
+                'changed_fields' => array_values(array_keys($data)),
+            ],
+        );
+
         return response()->json($order->load('user:id,name,email,role'));
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Order $order)
+    public function destroy(Request $request, Order $order)
     {
         $this->authorize('delete', $order);
+
+        ActivityLogger::log(
+            $request->user(),
+            'order.delete',
+            $request,
+            'order',
+            $order->id,
+            'Deleted an order',
+        );
 
         $order->delete();
 
         return response()->json(['message' => 'Order deleted successfully']);
+    }
+
+    private function buildFilteredQuery(Request $request)
+    {
+        $query = Order::with(['user:id,name,email,role']);
+        $user = $request->user();
+
+        if ($user->role === 'worker') {
+            $query->where('user_id', $user->id);
+        }
+
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('user_id') && $user->role !== 'worker') {
+            $query->where('user_id', (int) $request->user_id);
+        }
+
+        if ($request->search) {
+            $search = (string) $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%')
+                    ->orWhere('note', 'like', '%' . $search . '%')
+                    ->orWhere('id', 'like', '%' . $search . '%');
+            });
+        }
+
+        return $query;
+    }
+
+    private function formatPriorityLabel(string $priority): string
+    {
+        return match ($priority) {
+            'low' => 'Низкая',
+            'medium' => 'Средняя',
+            'high' => 'Высокая',
+            default => $priority,
+        };
+    }
+
+    private function formatStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'new' => 'Новый',
+            'in_progress' => 'В процессе',
+            'completed' => 'Выполнен',
+            'cancelled' => 'Отменён',
+            default => $status,
+        };
     }
 }

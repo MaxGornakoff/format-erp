@@ -63,7 +63,7 @@ const showInfoDialog = ref(false)
 const dialogMessage = ref('')
 const pendingDeleteUserId = ref<number | null>(null)
 const editingUserId = ref<number | undefined>(undefined)
-const editingUserData = ref<{ name: string; email: string; role: User['role'] } | undefined>(undefined)
+const editingUserData = ref<{ name: string; email: string; role: User['role']; is_tracked: boolean } | undefined>(undefined)
 
 const handleCreateUser = () => {
   editingUserId.value = undefined
@@ -85,6 +85,7 @@ const handleEditUser = async (id: number) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      is_tracked: user.is_tracked,
     }
     showModal.value = true
   } catch (err: any) {

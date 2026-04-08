@@ -26,6 +26,7 @@ class StoreUserRequest extends FormRequest
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|regex:/[A-Za-z]/ |regex:/[0-9]/',
             'role' => 'required|in:worker,manager,admin',
+            'is_tracked' => 'sometimes|boolean',
         ];
     }
 }
