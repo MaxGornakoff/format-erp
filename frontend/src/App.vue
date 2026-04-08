@@ -9,32 +9,60 @@
       </div>
     </template>
     <template v-else-if="authStore.isAuthenticated">
-      <!-- Authenticated layout -->
       <div class="min-h-screen flex flex-col">
         <AppHeader />
 
-        <div class="flex flex-1 min-h-0">
-          <AppSidebar />
+        <div class="flex flex-1 min-h-0 overflow-hidden">
+          <AppSidebar
+            :collapsed="isSidebarCollapsed"
+            @toggle="toggleSidebar"
+          />
 
-          <main class="flex-1 overflow-auto p-6 min-w-0">
-            <router-view />
+          <main
+            :class="[
+              'flex-1 overflow-auto min-w-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+              isSidebarCollapsed ? 'p-5 md:p-6' : 'p-5 md:p-6'
+            ]"
+          >
+            <div class="mx-auto w-full max-w-[1600px] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]">
+              <router-view />
+            </div>
           </main>
         </div>
       </div>
     </template>
     <template v-else>
-      <!-- Public routes (login, register, 404) -->
       <router-view />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 
 const authStore = useAuthStore()
+const SIDEBAR_STORAGE_KEY = 'format-erp-sidebar-collapsed'
+
+const getInitialSidebarState = () => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true'
+}
+
+const isSidebarCollapsed = ref(getInitialSidebarState())
+
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value
+
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isSidebarCollapsed.value))
+  }
+}
 </script>
 
 <style scoped>

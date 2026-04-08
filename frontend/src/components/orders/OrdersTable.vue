@@ -13,7 +13,7 @@
         
           <select
             v-model="statusFilter"
-            class="w-full h-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full text-[14px] h-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             @change="applyFilters"
           >
             <option value="">{{ $t('orders.filters.allStatuses') }}</option>
@@ -52,18 +52,20 @@
       :sort-field="store.sortField"
       :sort-direction="store.sortDirection"
       :clickable-rows="true"
+      :reorderable-columns="true"
+      column-order-key="orders-table"
       @sort="handleSort"
       @next-page="handleNextPage"
       @prev-page="handlePrevPage"
       @row-click="handleRowClick"
     >
       <template #cell-id="{ row }">
-        <span class="font-semibold text-gray-900">#{{ row.id }}</span>
+        <span class="font-semibold text-gray-900 text-[14px]">#{{ row.id }}</span>
       </template>
 
       <template #cell-executor="{ row }">
         <div class="min-w-[10rem]">
-          <p class="font-medium text-gray-900">{{ row.user?.name || '—' }}</p>
+          <p class="font-medium text-gray-900 text-[14px]">{{ row.user?.name || '—' }}</p>
         </div>
       </template>
 

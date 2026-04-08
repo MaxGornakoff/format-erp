@@ -22,7 +22,8 @@ export const ru = {
     of: 'из',
     previous: 'Предыдущая',
     next: 'Следующая',
-    actions: 'Действия'
+    actions: 'Действия',
+    resetColumns: 'Сбросить порядок колонок'
   },
 
   auth: {

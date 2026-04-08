@@ -12,11 +12,11 @@
         />
 
         <!-- Role Filter -->
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('users.role') }}</label>
+        <div>
+        
           <select
             v-model="roleFilter"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full h-10 px-3 py-2 text-[14px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             @change="applyFilters"
           >
             <option value="">{{ $t('users.filters.allRoles') }}</option>
@@ -50,6 +50,8 @@
       :pagination="pagination"
       :sort-field="store.sortField"
       :sort-direction="store.sortDirection"
+      :reorderable-columns="true"
+      column-order-key="users-table"
       @sort="handleSort"
       @next-page="handleNextPage"
       @prev-page="handlePrevPage"

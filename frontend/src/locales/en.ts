@@ -22,7 +22,8 @@ export const en = {
     of: 'of',
     previous: 'Previous',
     next: 'Next',
-    actions: 'Actions'
+    actions: 'Actions',
+    resetColumns: 'Reset column order'
   },
 
   auth: {
