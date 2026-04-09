@@ -257,22 +257,41 @@ class OrderController extends Controller
         $query = Order::with(['user:id,name,email,role']);
         $user = $request->user();
 
-        if ($user->role === 'worker') {
-            $query->where('user_id', $user->id);
-        }
-
         if ($request->status) {
             $query->where('status', $request->status);
         }
 
-        if ($request->filled('responsible')) {
+        if ($request->boolean('mine') && $user?->role === 'manager') {
+            $normalizedResponsible = mb_strtolower(trim((string) $user->name));
+
+            $query->where(function ($q) use ($normalizedResponsible) {
+                $q->whereRaw('LOWER(responsible_name) = ?', [$normalizedResponsible])
+                    ->orWhere(function ($fallbackQuery) use ($normalizedResponsible) {
+                        $fallbackQuery
+                            ->where(function ($emptyNameQuery) {
+                                $emptyNameQuery->whereNull('responsible_name')
+                                    ->orWhere('responsible_name', '');
+                            })
+                            ->whereHas('user', function ($userQuery) use ($normalizedResponsible) {
+                                $userQuery->whereRaw('LOWER(name) = ?', [$normalizedResponsible]);
+                            });
+                    });
+            });
+        } elseif ($request->filled('responsible')) {
             $responsible = trim((string) $request->responsible);
             $normalizedResponsible = mb_strtolower($responsible);
 
             $query->where(function ($q) use ($normalizedResponsible) {
                 $q->whereRaw('LOWER(responsible_name) = ?', [$normalizedResponsible])
-                    ->orWhereHas('user', function ($userQuery) use ($normalizedResponsible) {
-                        $userQuery->whereRaw('LOWER(name) = ?', [$normalizedResponsible]);
+                    ->orWhere(function ($fallbackQuery) use ($normalizedResponsible) {
+                        $fallbackQuery
+                            ->where(function ($emptyNameQuery) {
+                                $emptyNameQuery->whereNull('responsible_name')
+                                    ->orWhere('responsible_name', '');
+                            })
+                            ->whereHas('user', function ($userQuery) use ($normalizedResponsible) {
+                                $userQuery->whereRaw('LOWER(name) = ?', [$normalizedResponsible]);
+                            });
                     });
             });
         }
@@ -297,11 +316,6 @@ class OrderController extends Controller
     private function getResponsibleSuggestions(Request $request): array
     {
         $query = Order::query();
-        $user = $request->user();
-
-        if ($user->role === 'worker') {
-            $query->where('user_id', $user->id);
-        }
 
         return $query
             ->whereNotNull('responsible_name')

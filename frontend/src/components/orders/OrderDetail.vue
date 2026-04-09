@@ -341,14 +341,25 @@ const showResponsibleSuggestions = ref(false)
 let responsibleSuggestionsTimeout: ReturnType<typeof setTimeout> | null = null
 
 const filteredManagers = computed(() => {
-  const query = draft.value.responsible_name.trim().toLowerCase()
+  const selectedResponsible = (draft.value.responsible_name || '').trim().toLowerCase()
 
-  if (!query) {
-    return managers.value
+  const sortedManagers = [...managers.value].sort((a, b) => {
+    const aIsSelected = a.name.trim().toLowerCase() === selectedResponsible
+    const bIsSelected = b.name.trim().toLowerCase() === selectedResponsible
+
+    if (aIsSelected !== bIsSelected) {
+      return aIsSelected ? -1 : 1
+    }
+
+    return a.name.localeCompare(b.name, 'ru')
+  })
+
+  if (!selectedResponsible) {
+    return sortedManagers
   }
 
-  const matches = managers.value.filter((manager) => manager.name.toLowerCase().includes(query))
-  return matches.length > 0 ? matches : managers.value
+  const matches = sortedManagers.filter((manager) => manager.name.toLowerCase().includes(selectedResponsible))
+  return matches.length > 0 ? matches : sortedManagers
 })
 const orderCostInputRef = ref<HTMLInputElement | null>(null)
 const descriptionTextareaRef = ref<HTMLTextAreaElement | null>(null)

@@ -34,6 +34,7 @@ export const useOrderStore = defineStore('order', () => {
 
   const statusFilter = ref<string | undefined>(undefined)
   const executorFilter = ref<string | undefined>(undefined)
+  const mineOnlyFilter = ref(false)
   const searchQuery = ref('')
   const sortField = ref('created_at')
   const sortDirection = ref<'asc' | 'desc'>('desc')
@@ -55,6 +56,7 @@ export const useOrderStore = defineStore('order', () => {
         sortField.value,
         sortDirection.value,
         executorFilter.value,
+        mineOnlyFilter.value,
       )
 
       orders.value = response.data
@@ -162,6 +164,11 @@ export const useOrderStore = defineStore('order', () => {
     currentPage.value = 1
   }
 
+  const setMineOnlyFilter = (enabled: boolean) => {
+    mineOnlyFilter.value = enabled
+    currentPage.value = 1
+  }
+
   const setSearchQuery = (query: string) => {
     searchQuery.value = query
     currentPage.value = 1
@@ -183,6 +190,7 @@ export const useOrderStore = defineStore('order', () => {
   const resetFilters = () => {
     statusFilter.value = undefined
     executorFilter.value = undefined
+    mineOnlyFilter.value = false
     searchQuery.value = ''
     sortField.value = 'created_at'
     sortDirection.value = 'desc'
@@ -203,6 +211,7 @@ export const useOrderStore = defineStore('order', () => {
     responsibleOptions,
     statusFilter,
     executorFilter,
+    mineOnlyFilter,
     searchQuery,
     sortField,
     sortDirection,
@@ -216,6 +225,7 @@ export const useOrderStore = defineStore('order', () => {
     deleteOrder,
     setStatusFilter,
     setExecutorFilter,
+    setMineOnlyFilter,
     setSearchQuery,
     setSorting,
     goToPage,

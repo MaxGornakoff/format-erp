@@ -27,6 +27,19 @@ class ActivityLogger
             return;
         }
 
+        $ipAddress = $request?->ip();
+
+        $userAgent = (string) ($request?->userAgent() ?? '');
+
+        if ($ipAddress) {
+            $metadata['ip'] = $ipAddress;
+        }
+
+        if ($userAgent !== '') {
+            $metadata['browser'] = self::detectBrowser($userAgent);
+            $metadata['device'] = self::detectDevice($userAgent);
+        }
+
         ActivityLog::create([
             'user_id' => $actor->id,
             'user_name' => $actor->name,
@@ -37,8 +50,38 @@ class ActivityLogger
             'subject_id' => $subjectId,
             'description' => $description,
             'metadata' => empty($metadata) ? null : $metadata,
-            'ip_address' => $request?->ip(),
-            'user_agent' => Str::limit((string) ($request?->userAgent() ?? ''), 1000, ''),
+            'ip_address' => $ipAddress,
+            'user_agent' => Str::limit($userAgent, 1000, ''),
         ]);
+    }
+
+    private static function detectBrowser(string $userAgent): string
+    {
+        $normalized = Str::lower($userAgent);
+
+        return match (true) {
+            str_contains($normalized, 'edg/') => 'Microsoft Edge',
+            str_contains($normalized, 'opr/'), str_contains($normalized, 'opera') => 'Opera',
+            str_contains($normalized, 'chrome/') && ! str_contains($normalized, 'edg/') => 'Google Chrome',
+            str_contains($normalized, 'firefox/') => 'Mozilla Firefox',
+            str_contains($normalized, 'safari/') && ! str_contains($normalized, 'chrome/') => 'Safari',
+            default => 'Unknown browser',
+        };
+    }
+
+    private static function detectDevice(string $userAgent): string
+    {
+        $normalized = Str::lower($userAgent);
+
+        return match (true) {
+            str_contains($normalized, 'iphone') => 'iPhone',
+            str_contains($normalized, 'ipad') => 'iPad',
+            str_contains($normalized, 'android') && str_contains($normalized, 'mobile') => 'Android phone',
+            str_contains($normalized, 'android') => 'Android tablet',
+            str_contains($normalized, 'windows') => 'Windows PC',
+            str_contains($normalized, 'macintosh'), str_contains($normalized, 'mac os') => 'Mac',
+            str_contains($normalized, 'linux') => 'Linux PC',
+            default => 'Unknown device',
+        };
     }
 }

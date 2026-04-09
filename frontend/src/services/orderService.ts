@@ -81,6 +81,7 @@ const orderService = {
     sort: string = 'created_at',
     direction: string = 'desc',
     responsible?: string,
+    mineOnly?: boolean,
   ): Promise<OrdersResponse> {
     const response = await api.get('/orders', {
       params: {
@@ -91,6 +92,7 @@ const orderService = {
         sort,
         direction,
         responsible,
+        mine: mineOnly ? '1' : undefined,
       },
     })
     return response.data

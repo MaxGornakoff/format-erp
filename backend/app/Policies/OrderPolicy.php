@@ -21,11 +21,7 @@ class OrderPolicy
      */
     public function view(User $user, Order $order): bool
     {
-        if (in_array($user->role, ['admin', 'manager'], true)) {
-            return true;
-        }
-
-        return $user->id === $order->user_id;
+        return in_array($user->role, ['worker', 'manager', 'admin'], true);
     }
 
     /**

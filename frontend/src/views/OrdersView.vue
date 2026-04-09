@@ -3,22 +3,40 @@
     <div class="flex items-center justify-between gap-4">
       <h1 class="text-3xl font-bold text-gray-900">{{ $t('orders.title') }}</h1>
 
-      <Button
-        v-if="authStore.isAdmin"
-        variant="ghost"
-        size="sm"
-        :loading="isExporting"
-        :title="$t('common.exportExcel')"
-        :aria-label="$t('common.exportExcel')"
-        disable-focus-styles
-        class="h-10 w-10 flex items-center justify-center !rounded-lg !border !border-green-200 !bg-green-50 !px-0 !py-0 !text-green-700 hover:!bg-green-100"
-        @click="exportFilteredOrders"
-      >
-        <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5" aria-hidden="true">
-          <path d="M10 2a1 1 0 0 1 1 1v6.59l1.3-1.3a1 1 0 1 1 1.4 1.42l-3 3a1 1 0 0 1-1.4 0l-3-3A1 1 0 0 1 7.7 8.3L9 9.59V3a1 1 0 0 1 1-1Z" />
-          <path d="M4 13a1 1 0 0 1 1 1v1h10v-1a1 1 0 1 1 2 0v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a1 1 0 0 1 1-1Z" />
-        </svg>
-      </Button>
+      <div class="flex items-center gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          :loading="store.isLoading"
+          :title="$t('common.refresh')"
+          :aria-label="$t('common.refresh')"
+          disable-focus-styles
+          class="refresh-button h-10 w-10 flex items-center justify-center !rounded-lg !px-0 !py-0 !bg-[#ffffff]"
+          @click="refreshOrders"
+        >
+          <svg viewBox="0 0 20 20" fill="none" stroke="#3b82f6" stroke-width="1.8" class="h-5 w-5" aria-hidden="true">
+            <path d="M16.75 10A6.75 6.75 0 1 1 14.77 5.23" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M16.75 3.75v4h-4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </Button>
+
+        <Button
+          v-if="authStore.isAdmin"
+          variant="ghost"
+          size="sm"
+          :loading="isExporting"
+          :title="$t('common.exportExcel')"
+          :aria-label="$t('common.exportExcel')"
+          disable-focus-styles
+          class="h-10 w-10 flex items-center justify-center !rounded-lg !border !border-green-200 !bg-green-50 !px-0 !py-0 !text-green-700 hover:!bg-green-100"
+          @click="exportFilteredOrders"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5" aria-hidden="true">
+            <path d="M10 2a1 1 0 0 1 1 1v6.59l1.3-1.3a1 1 0 1 1 1.4 1.42l-3 3a1 1 0 0 1-1.4 0l-3-3A1 1 0 0 1 7.7 8.3L9 9.59V3a1 1 0 0 1 1-1Z" />
+            <path d="M4 13a1 1 0 0 1 1 1v1h10v-1a1 1 0 1 1 2 0v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a1 1 0 0 1 1-1Z" />
+          </svg>
+        </Button>
+      </div>
     </div>
 
     <!-- Modal for Create/Edit -->
@@ -103,6 +121,14 @@ const handleCreateOrder = () => {
   editingOrderId.value = undefined
   editingOrderData.value = undefined
   showModal.value = true
+}
+
+const refreshOrders = async () => {
+  try {
+    await store.fetchOrders()
+  } catch {
+    // table-level alert already reflects the store error state
+  }
 }
 
 const showErrorDialog = (message: string, title: string = t('common.error')) => {

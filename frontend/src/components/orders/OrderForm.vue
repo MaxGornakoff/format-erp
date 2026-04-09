@@ -218,18 +218,30 @@ const showResponsibleSuggestions = ref(false)
 let responsibleSuggestionsTimeout: ReturnType<typeof setTimeout> | null = null
 
 const filteredManagers = computed(() => {
+  const currentUserName = (authStore.user?.name ?? '').trim().toLowerCase()
   const query = responsibleName.value.trim().toLowerCase()
 
-  if (!query) {
-    return managers.value
+  const sortedManagers = [...managers.value].sort((a, b) => {
+    const aIsCurrent = a.name.trim().toLowerCase() === currentUserName
+    const bIsCurrent = b.name.trim().toLowerCase() === currentUserName
+
+    if (aIsCurrent !== bIsCurrent) {
+      return aIsCurrent ? -1 : 1
+    }
+
+    return a.name.localeCompare(b.name, 'ru')
+  })
+
+  if (!query || query === currentUserName) {
+    return sortedManagers
   }
 
-  const matches = managers.value.filter((manager) => {
+  const matches = sortedManagers.filter((manager) => {
     return manager.name.toLowerCase().includes(query)
       || manager.email.toLowerCase().includes(query)
   })
 
-  return matches.length > 0 ? matches : managers.value
+  return matches.length > 0 ? matches : sortedManagers
 })
 
 const form = ref<{

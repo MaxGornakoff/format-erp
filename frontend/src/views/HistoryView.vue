@@ -1,8 +1,25 @@
 <template>
   <div class="space-y-4">
-    <div>
-      <h1 class="text-3xl font-bold text-gray-900">{{ $t('history.title') }}</h1>
-      <p class="text-gray-600">{{ $t('history.description') }}</p>
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">{{ $t('history.title') }}</h1>
+      </div>
+
+      <Button
+        variant="secondary"
+        size="sm"
+        :loading="store.isLoading"
+        :title="$t('common.refresh')"
+        :aria-label="$t('common.refresh')"
+        disable-focus-styles
+        class="!flex !h-10 !w-10 !items-center !justify-center !rounded-lg !px-0 !py-0 !bg-[#ffffff]"
+        @click="loadHistory"
+      >
+        <svg viewBox="0 0 20 20" fill="none" stroke="#3b82f6" stroke-width="1.8" class="h-5 w-5" aria-hidden="true">
+          <path d="M16.75 10A6.75 6.75 0 1 1 14.77 5.23" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16.75 3.75v4h-4" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </Button>
     </div>
 
     <div class="bg-white p-4 rounded-lg border border-gray-200">
@@ -28,11 +45,7 @@
           </select>
         </div>
 
-        <div class="flex items-end gap-2">
-          <Button variant="secondary" disable-focus-styles @click="loadHistory">
-            {{ $t('common.refresh') }}
-          </Button>
-        </div>
+        <div class="flex items-end gap-2"></div>
       </div>
     </div>
 
@@ -89,7 +102,21 @@
 
       <template #cell-description="{ row }">
         <div class="min-w-[16rem] max-w-[28rem] whitespace-pre-wrap break-words text-sm text-gray-600 leading-5">
-          {{ row.description || '—' }}
+          <p>{{ row.description || '—' }}</p>
+          <div class="mt-2 space-y-1 text-xs text-gray-500">
+            <p>
+              <span class="font-medium text-gray-700">IP:</span>
+              <span class="ml-1">{{ row.ip_address || row.metadata?.ip || '—' }}</span>
+            </p>
+            <p>
+              <span class="font-medium text-gray-700">Браузер:</span>
+              <span class="ml-1">{{ row.metadata?.browser || '—' }}</span>
+            </p>
+            <p>
+              <span class="font-medium text-gray-700">Устройство:</span>
+              <span class="ml-1">{{ row.metadata?.device || '—' }}</span>
+            </p>
+          </div>
         </div>
       </template>
     </Table>

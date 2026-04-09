@@ -26,7 +26,8 @@
         <div v-if="canFilterByExecutor">
           <select
             v-model="executorFilter"
-            class="w-full text-[14px] h-10 px-3 py-2 pr-10 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            :disabled="showScopeToggle && scopeFilter === 'mine'"
+            class="w-full text-[14px] h-10 px-3 py-2 pr-10 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
             @change="applyFilters"
           >
             <option value="">{{ $t('orders.filters.allExecutors') }}</option>
@@ -37,11 +38,47 @@
         </div>
 
         <div class="flex items-end gap-2 flex-wrap" :class="canFilterByExecutor ? 'md:justify-end' : 'md:col-span-2'">
-          <Button variant="secondary" disable-focus-styles @click="loadOrders">
-            {{ $t('common.refresh') }}
-          </Button>
-          <Button variant="ghost" disable-focus-styles @click="resetFilters">
-            {{ $t('common.resetFilters') }}
+          <div
+            v-if="showScopeToggle"
+            class="relative flex h-10 items-center rounded-full border border-slate-200 bg-slate-100/90 p-1 shadow-sm"
+          >
+            <span
+              class="pointer-events-none absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-full bg-white shadow-sm ring-1 ring-blue-100 transition-all duration-300 ease-out"
+              :class="scopeFilter === 'mine' ? 'left-1' : 'left-[calc(50%+0px)]'"
+              aria-hidden="true"
+            />
+
+            <button
+              type="button"
+              class="relative z-10 min-w-[78px] rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200"
+              :class="scopeFilter === 'mine' ? 'text-blue-700' : 'text-slate-500 hover:text-slate-700'"
+              @click="setScopeFilter('mine')"
+            >
+              Свои
+            </button>
+            <button
+              type="button"
+              class="relative z-10 min-w-[78px] rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200"
+              :class="scopeFilter === 'all' ? 'text-blue-700' : 'text-slate-500 hover:text-slate-700'"
+              @click="setScopeFilter('all')"
+            >
+              Все
+            </button>
+          </div>
+
+          <Button
+            v-if="hasActiveFilters"
+            variant="ghost"
+            size="sm"
+            :title="$t('common.resetFilters')"
+            :aria-label="$t('common.resetFilters')"
+            disable-focus-styles
+            class="!flex !h-10 !w-10 !items-center !justify-center !px-0 !py-0"
+            @click="resetFilters"
+          >
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4.5 w-4.5" aria-hidden="true">
+              <path d="M5 5l10 10M15 5L5 15" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
           </Button>
         </div>
       </div>
@@ -198,6 +235,7 @@ const { formatTableDate } = useFormattedDate()
 const searchQuery = ref('')
 const statusFilter = ref('')
 const executorFilter = ref('')
+const scopeFilter = ref<'all' | 'mine'>('all')
 
 const columns = computed(() => [
   { key: 'id', label: t('orders.orderNumberShort'), sortable: true },
@@ -222,8 +260,17 @@ const pagination = computed(() => ({
 }))
 
 const isAdmin = computed(() => authStore.isAdmin)
+const showScopeToggle = computed(() => authStore.isManager)
 const canFilterByExecutor = computed(() => true)
 const canViewFinancials = computed(() => !authStore.isWorker)
+const hasActiveFilters = computed(() => {
+  return Boolean(
+    statusFilter.value
+    || searchQuery.value.trim()
+    || executorFilter.value
+    || (showScopeToggle.value && scopeFilter.value === 'mine')
+  )
+})
 
 const getStatusVariant = (status: OrderStatus): 'info' | 'warning' | 'success' | 'danger' | 'default' => {
   const variants: Record<OrderStatus, 'info' | 'warning' | 'success' | 'danger'> = {
@@ -291,6 +338,7 @@ const syncFiltersFromRoute = () => {
   const routeStatus = typeof route.query.status === 'string' ? route.query.status : ''
   const routeSearch = typeof route.query.search === 'string' ? route.query.search : ''
   const routeExecutor = typeof route.query.executor === 'string' ? route.query.executor : ''
+  const routeScope = showScopeToggle.value && route.query.scope === 'mine' ? 'mine' : 'all'
   const normalizedStatus = allowedStatuses.includes(routeStatus as OrderStatus)
     ? routeStatus as OrderStatus
     : ''
@@ -298,8 +346,10 @@ const syncFiltersFromRoute = () => {
   statusFilter.value = normalizedStatus
   searchQuery.value = routeSearch
   executorFilter.value = routeExecutor
+  scopeFilter.value = routeScope
   store.setStatusFilter(normalizedStatus || undefined)
-  store.setExecutorFilter(routeExecutor || undefined)
+  store.setExecutorFilter(routeScope === 'mine' ? undefined : routeExecutor || undefined)
+  store.setMineOnlyFilter(routeScope === 'mine')
   store.setSearchQuery(routeSearch)
 }
 
@@ -314,7 +364,9 @@ const buildFilterQuery = () => {
     query.search = searchQuery.value.trim()
   }
 
-  if (executorFilter.value) {
+  if (showScopeToggle.value && scopeFilter.value === 'mine') {
+    query.scope = 'mine'
+  } else if (executorFilter.value) {
     query.executor = executorFilter.value
   }
 
@@ -323,13 +375,24 @@ const buildFilterQuery = () => {
 
 const applyFilters = async () => {
   store.goToPage(1)
+  store.setMineOnlyFilter(showScopeToggle.value && scopeFilter.value === 'mine')
   await router.replace({ query: buildFilterQuery() })
+}
+
+const setScopeFilter = async (scope: 'all' | 'mine') => {
+  if (scopeFilter.value === scope) {
+    return
+  }
+
+  scopeFilter.value = scope
+  await applyFilters()
 }
 
 const resetFilters = async () => {
   searchQuery.value = ''
   statusFilter.value = ''
   executorFilter.value = ''
+  scopeFilter.value = 'all'
   store.resetFilters()
   await router.replace({ query: {} })
 }
@@ -355,7 +418,7 @@ const loadOrders = async () => {
 }
 
 watch(
-  () => [route.query.status, route.query.search, route.query.executor],
+  () => [route.query.status, route.query.search, route.query.executor, route.query.scope],
   async () => {
     syncFiltersFromRoute()
     await loadOrders()
