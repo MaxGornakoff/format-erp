@@ -18,6 +18,7 @@ class Order extends Model
         'priority',
         'status',
         'user_id',
+        'responsible_name',
     ];
 
     protected $casts = [

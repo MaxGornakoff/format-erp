@@ -115,8 +115,9 @@
       </Button>
     </div>
 
-    <div class="flex justify-end">
+    <div class="flex items-center justify-end gap-20 flex-wrap">
       <slot name="pagination-left-extra" :pagination="pagination" />
+      <slot name="pagination-right-extra" :pagination="pagination" />
     </div>
   </div>
 </template>

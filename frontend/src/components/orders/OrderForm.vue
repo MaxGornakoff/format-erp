@@ -1,29 +1,46 @@
 <template>
   <form @submit.prevent="handleSubmit" class="space-y-4">
-    <div v-if="canAssignWorker" class="mb-4">
+    <div class="mb-4">
       <label class="block text-sm font-medium text-gray-700 mb-1">
         {{ $t('orders.executor') }}
         <span class="text-red-500">*</span>
       </label>
-      <select
-        v-model.number="form.user_id"
-        :class="[
-          'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
-          errors.user_id ? 'border-red-500' : 'border-gray-300'
-        ]"
-      >
-        <option :value="undefined" disabled>
-          {{ isLoadingWorkers ? $t('common.loading') : $t('orders.selectExecutor') }}
-        </option>
-        <option v-for="worker in workers" :key="worker.id" :value="worker.id">
-          {{ worker.name }}{{ worker.email ? ` (${worker.email})` : '' }}
-        </option>
-      </select>
-      <p v-if="errors.user_id" class="mt-1 text-sm text-red-500">{{ errors.user_id }}</p>
-    </div>
 
-    <div v-else class="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
-      {{ $t('orders.autoAssignedWorker') }}: <span class="font-semibold">{{ authStore.user?.name }}</span>
+      <div class="relative">
+        <input
+          v-model.trim="responsibleName"
+          type="text"
+          :placeholder="isLoadingManagers ? $t('common.loading') : $t('orders.selectExecutor')"
+          :class="[
+            'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+            errors.responsible_name ? 'border-red-500' : 'border-gray-300'
+          ]"
+          @focus="openResponsibleSuggestions"
+          @input="openResponsibleSuggestions"
+          @blur="closeResponsibleSuggestions"
+        />
+
+        <div
+          v-if="showResponsibleSuggestions && filteredManagers.length > 0"
+          class="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+        >
+          <button
+            v-for="manager in filteredManagers"
+            :key="manager.id"
+            type="button"
+            class="flex w-full flex-col px-3 py-2 text-left transition-colors hover:bg-blue-50"
+            @mousedown.prevent="selectResponsible(manager)"
+          >
+            <span class="text-sm font-medium text-gray-900">{{ manager.name }}</span>
+            <span v-if="manager.email" class="text-xs text-gray-500">{{ manager.email }}</span>
+          </button>
+        </div>
+      </div>
+
+      <p class="mt-1 text-xs text-gray-500">
+        {{ $t('orders.selectExecutor') }} — можно выбрать из списка менеджеров или вписать вручную.
+      </p>
+      <p v-if="errors.responsible_name" class="mt-1 text-sm text-red-500">{{ errors.responsible_name }}</p>
     </div>
 
     <div class="mb-4">
@@ -55,7 +72,7 @@
       />
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div v-if="canManageFinancials" class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">
           {{ $t('orders.packageCost') }}
@@ -172,11 +189,11 @@ interface Props {
     order_cost: number | null
     priority?: OrderPriority
     status?: Order['status']
-    user_id?: number
+    responsible_name?: string
   }
 }
 
-interface WorkerOption {
+interface ManagerOption {
   id: number
   name: string
   email: string
@@ -193,9 +210,27 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 const isEdit = computed(() => !!props.orderId)
-const canAssignWorker = computed(() => authStore.isManager || authStore.isAdmin)
-const workers = ref<WorkerOption[]>([])
-const isLoadingWorkers = ref(false)
+const canManageFinancials = computed(() => authStore.isManager || authStore.isAdmin)
+const managers = ref<ManagerOption[]>([])
+const isLoadingManagers = ref(false)
+const responsibleName = ref(authStore.user?.name ?? '')
+const showResponsibleSuggestions = ref(false)
+let responsibleSuggestionsTimeout: ReturnType<typeof setTimeout> | null = null
+
+const filteredManagers = computed(() => {
+  const query = responsibleName.value.trim().toLowerCase()
+
+  if (!query) {
+    return managers.value
+  }
+
+  const matches = managers.value.filter((manager) => {
+    return manager.name.toLowerCase().includes(query)
+      || manager.email.toLowerCase().includes(query)
+  })
+
+  return matches.length > 0 ? matches : managers.value
+})
 
 const form = ref<{
   description: string
@@ -204,7 +239,6 @@ const form = ref<{
   order_cost: number | null | ''
   priority: OrderPriority
   status: Order['status']
-  user_id?: number
 }>({
   description: '',
   note: '',
@@ -212,12 +246,19 @@ const form = ref<{
   order_cost: null,
   priority: 'medium',
   status: 'new',
-  user_id: authStore.user?.id,
 })
 
 const errors = ref<Record<string, string>>({})
 const generalError = ref('')
 const isSubmitting = ref(false)
+
+const getDefaultResponsibleName = () => {
+  if (props.initialData?.responsible_name?.trim()) {
+    return props.initialData.responsible_name.trim()
+  }
+
+  return authStore.user?.name ?? ''
+}
 
 const syncForm = () => {
   form.value = {
@@ -227,11 +268,24 @@ const syncForm = () => {
     order_cost: props.initialData?.order_cost ?? null,
     priority: props.initialData?.priority || 'medium',
     status: props.initialData?.status || 'new',
-    user_id: canAssignWorker.value ? props.initialData?.user_id : authStore.user?.id,
   }
+
+  responsibleName.value = getDefaultResponsibleName()
 }
 
 watch(() => props.initialData, syncForm, { immediate: true, deep: true })
+
+watch(
+  () => authStore.user?.name,
+  (userName) => {
+    if (!userName || responsibleName.value.trim()) {
+      return
+    }
+
+    responsibleName.value = userName
+  },
+  { immediate: true }
+)
 
 const toNullableNumber = (value: number | null | '' | undefined) => {
   if (value === '' || value === null || value === undefined) {
@@ -242,20 +296,37 @@ const toNullableNumber = (value: number | null | '' | undefined) => {
   return Number.isNaN(numberValue) ? null : numberValue
 }
 
-const loadWorkers = async () => {
-  if (!canAssignWorker.value) {
-    return
+const loadManagers = async () => {
+  isLoadingManagers.value = true
+  try {
+    const response = await userService.getUsers(1, 100, 'manager')
+    managers.value = [...response.data].sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+  } catch (err) {
+    console.error('Failed to load managers:', err)
+    managers.value = []
+  } finally {
+    isLoadingManagers.value = false
+  }
+}
+
+const openResponsibleSuggestions = () => {
+  if (responsibleSuggestionsTimeout) {
+    clearTimeout(responsibleSuggestionsTimeout)
+    responsibleSuggestionsTimeout = null
   }
 
-  isLoadingWorkers.value = true
-  try {
-    const response = await userService.getUsers(1, 100, 'worker')
-    workers.value = response.data
-  } catch (err) {
-    console.error('Failed to load workers:', err)
-  } finally {
-    isLoadingWorkers.value = false
-  }
+  showResponsibleSuggestions.value = true
+}
+
+const closeResponsibleSuggestions = () => {
+  responsibleSuggestionsTimeout = setTimeout(() => {
+    showResponsibleSuggestions.value = false
+  }, 120)
+}
+
+const selectResponsible = (manager: ManagerOption) => {
+  responsibleName.value = manager.name
+  showResponsibleSuggestions.value = false
 }
 
 const validateForm = () => {
@@ -265,8 +336,8 @@ const validateForm = () => {
     errors.value.description = t('validation.descriptionRequired')
   }
 
-  if (canAssignWorker.value && !form.value.user_id) {
-    errors.value.user_id = t('validation.executorRequired')
+  if (!responsibleName.value.trim()) {
+    errors.value.responsible_name = t('validation.executorRequired')
   }
 
   const packageCost = toNullableNumber(form.value.package_cost)
@@ -294,10 +365,10 @@ const handleSubmit = async () => {
     title: form.value.description.trim().slice(0, 80),
     description: form.value.description.trim(),
     note: form.value.note.trim() || undefined,
-    package_cost: toNullableNumber(form.value.package_cost),
-    order_cost: toNullableNumber(form.value.order_cost),
+    package_cost: canManageFinancials.value ? toNullableNumber(form.value.package_cost) : undefined,
+    order_cost: canManageFinancials.value ? toNullableNumber(form.value.order_cost) : undefined,
     priority: form.value.priority,
-    user_id: canAssignWorker.value ? form.value.user_id : undefined,
+    responsible_name: responsibleName.value.trim(),
   }
 
   try {
@@ -324,7 +395,7 @@ const handleSubmit = async () => {
 }
 
 onMounted(() => {
-  loadWorkers()
+  loadManagers()
 })
 </script>
 

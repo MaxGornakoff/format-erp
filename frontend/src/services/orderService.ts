@@ -13,6 +13,7 @@ export interface Order {
   priority: OrderPriority
   status: OrderStatus
   user_id: number
+  responsible_name?: string | null
   user: {
     id: number
     name: string
@@ -30,7 +31,7 @@ export interface CreateOrderPayload {
   package_cost?: number | null
   order_cost?: number | null
   priority: OrderPriority
-  user_id?: number
+  responsible_name?: string
 }
 
 export interface UpdateOrderPayload {
@@ -41,7 +42,7 @@ export interface UpdateOrderPayload {
   order_cost?: number | null
   priority?: OrderPriority
   status?: OrderStatus
-  user_id?: number
+  responsible_name?: string
 }
 
 export interface OrderTotals {
@@ -58,6 +59,7 @@ export interface OrdersResponse {
   per_page: number
   last_page: number
   totals?: OrderTotals
+  responsibles?: string[]
 }
 
 const orderService = {
@@ -78,7 +80,7 @@ const orderService = {
     search?: string,
     sort: string = 'created_at',
     direction: string = 'desc',
-    userId?: string,
+    responsible?: string,
   ): Promise<OrdersResponse> {
     const response = await api.get('/orders', {
       params: {
@@ -88,7 +90,7 @@ const orderService = {
         search,
         sort,
         direction,
-        user_id: userId,
+        responsible,
       },
     })
     return response.data
@@ -109,7 +111,7 @@ const orderService = {
     search?: string,
     sort: string = 'created_at',
     direction: string = 'desc',
-    userId?: string,
+    responsible?: string,
   ): Promise<Blob> {
     const response = await api.get('/orders/export', {
       params: {
@@ -117,7 +119,7 @@ const orderService = {
         search,
         sort,
         direction,
-        user_id: userId,
+        responsible,
       },
       responseType: 'blob',
     })

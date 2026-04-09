@@ -26,7 +26,7 @@ class OrderController extends Controller
             'package_cost' => (float) ((clone $query)->sum('package_cost') ?? 0),
         ];
 
-        $allowedSorts = ['id', 'created_at', 'updated_at', 'status', 'priority', 'package_cost', 'order_cost', 'user_id'];
+        $allowedSorts = ['id', 'created_at', 'updated_at', 'status', 'priority', 'package_cost', 'order_cost', 'responsible_name'];
         $sort = in_array($request->sort, $allowedSorts, true) ? $request->sort : 'created_at';
         $direction = $request->direction === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sort, $direction);
@@ -36,6 +36,7 @@ class OrderController extends Controller
 
         $payload = $orders->toArray();
         $payload['totals'] = $totals;
+        $payload['responsibles'] = $this->getResponsibleSuggestions($request);
 
         return response()->json($payload);
     }
@@ -45,7 +46,7 @@ class OrderController extends Controller
         abort_unless($request->user()?->role === 'admin', 403);
 
         $query = $this->buildFilteredQuery($request);
-        $allowedSorts = ['id', 'created_at', 'updated_at', 'status', 'priority', 'package_cost', 'order_cost', 'user_id'];
+        $allowedSorts = ['id', 'created_at', 'updated_at', 'status', 'priority', 'package_cost', 'order_cost', 'responsible_name'];
         $sort = in_array($request->sort, $allowedSorts, true) ? $request->sort : 'created_at';
         $direction = $request->direction === 'asc' ? 'asc' : 'desc';
 
@@ -68,7 +69,7 @@ class OrderController extends Controller
             fputcsv($handle, [
                 '№ Заказа',
                 'Дата',
-                'Исполнитель',
+                'Ответственный',
                 'Описание',
                 'Примечание',
                 'Стоимость макета',
@@ -81,7 +82,7 @@ class OrderController extends Controller
                 fputcsv($handle, [
                     $order->id,
                     optional($order->created_at)?->format('d.m.Y H:i'),
-                    $order->user?->name ?? '—',
+                    $this->resolveResponsibleName($order),
                     $order->description,
                     $order->note ?? '',
                     $order->package_cost,
@@ -111,24 +112,20 @@ class OrderController extends Controller
 
         $data = $request->validated();
         $currentUser = $request->user();
-        $assignedUserId = $currentUser->id;
+        $responsibleName = trim((string) ($data['responsible_name'] ?? ''));
 
-        if (in_array($currentUser->role, ['manager', 'admin'], true)) {
-            if (empty($data['user_id'])) {
-                throw ValidationException::withMessages([
-                    'user_id' => 'Please select a worker executor.',
-                ]);
-            }
+        if (! in_array($currentUser->role, ['manager', 'admin'], true)) {
+            unset($data['package_cost'], $data['order_cost']);
+        }
 
-            $worker = User::where('role', 'worker')->find($data['user_id']);
+        if ($responsibleName === '') {
+            $responsibleName = trim((string) $currentUser->name);
+        }
 
-            if (! $worker) {
-                throw ValidationException::withMessages([
-                    'user_id' => 'Selected executor must be a worker.',
-                ]);
-            }
-
-            $assignedUserId = $worker->id;
+        if ($responsibleName === '') {
+            throw ValidationException::withMessages([
+                'responsible_name' => 'Please enter a responsible user.',
+            ]);
         }
 
         $generatedTitle = trim((string) ($data['title'] ?? ''));
@@ -149,7 +146,8 @@ class OrderController extends Controller
             'order_cost' => $data['order_cost'] ?? null,
             'priority' => $data['priority'] ?? 'medium',
             'status' => 'new',
-            'user_id' => $assignedUserId,
+            'user_id' => $currentUser->id,
+            'responsible_name' => $responsibleName,
         ]);
 
         ActivityLogger::log(
@@ -160,7 +158,7 @@ class OrderController extends Controller
             $order->id,
             'Created a new order',
             [
-                'assigned_user_id' => $assignedUserId,
+                'responsible_name' => $responsibleName,
             ],
         );
 
@@ -196,17 +194,19 @@ class OrderController extends Controller
         $data = $request->validated();
         $currentUser = $request->user();
 
-        if (array_key_exists('user_id', $data)) {
-            if (! in_array($currentUser->role, ['manager', 'admin'], true)) {
-                unset($data['user_id']);
-            } else {
-                $worker = User::where('role', 'worker')->find($data['user_id']);
+        unset($data['user_id']);
 
-                if (! $worker) {
-                    throw ValidationException::withMessages([
-                        'user_id' => 'Selected executor must be a worker.',
-                    ]);
-                }
+        if (! in_array($currentUser->role, ['manager', 'admin'], true)) {
+            unset($data['package_cost'], $data['order_cost']);
+        }
+
+        if (array_key_exists('responsible_name', $data)) {
+            $data['responsible_name'] = trim((string) $data['responsible_name']);
+
+            if ($data['responsible_name'] === '') {
+                throw ValidationException::withMessages([
+                    'responsible_name' => 'Please enter a responsible user.',
+                ]);
             }
         }
 
@@ -265,8 +265,16 @@ class OrderController extends Controller
             $query->where('status', $request->status);
         }
 
-        if ($request->filled('user_id') && $user->role !== 'worker') {
-            $query->where('user_id', (int) $request->user_id);
+        if ($request->filled('responsible')) {
+            $responsible = trim((string) $request->responsible);
+            $normalizedResponsible = mb_strtolower($responsible);
+
+            $query->where(function ($q) use ($normalizedResponsible) {
+                $q->whereRaw('LOWER(responsible_name) = ?', [$normalizedResponsible])
+                    ->orWhereHas('user', function ($userQuery) use ($normalizedResponsible) {
+                        $userQuery->whereRaw('LOWER(name) = ?', [$normalizedResponsible]);
+                    });
+            });
         }
 
         if ($request->search) {
@@ -275,11 +283,46 @@ class OrderController extends Controller
                 $q->where('title', 'like', '%' . $search . '%')
                     ->orWhere('description', 'like', '%' . $search . '%')
                     ->orWhere('note', 'like', '%' . $search . '%')
-                    ->orWhere('id', 'like', '%' . $search . '%');
+                    ->orWhere('responsible_name', 'like', '%' . $search . '%')
+                    ->orWhere('id', 'like', '%' . $search . '%')
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', '%' . $search . '%');
+                    });
             });
         }
 
         return $query;
+    }
+
+    private function getResponsibleSuggestions(Request $request): array
+    {
+        $query = Order::query();
+        $user = $request->user();
+
+        if ($user->role === 'worker') {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query
+            ->whereNotNull('responsible_name')
+            ->where('responsible_name', '!=', '')
+            ->distinct()
+            ->orderBy('responsible_name')
+            ->pluck('responsible_name')
+            ->filter(fn ($name) => is_string($name) && trim($name) !== '')
+            ->values()
+            ->all();
+    }
+
+    private function resolveResponsibleName(Order $order): string
+    {
+        $responsibleName = trim((string) ($order->responsible_name ?? ''));
+
+        if ($responsibleName !== '') {
+            return $responsibleName;
+        }
+
+        return $order->user?->name ?? '—';
     }
 
     private function formatPriorityLabel(string $priority): string

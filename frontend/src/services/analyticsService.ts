@@ -24,6 +24,7 @@ export interface DashboardResponse {
     cancelled: number
   }
   top_workers: TopWorker[]
+  top_responsibles?: TopWorker[]
 }
 
 export interface OrdersTrendPoint {

@@ -161,6 +161,13 @@ Worker 3:
 Email: worker3@example.com
 Password: Worker123
 ```
+Исполнитель:
+worker@format.ru
+hGrjkll^56782
+
+Менеджер №1:
+manager1@format.ru
+hfldjYTR453@df
 
 ---
 

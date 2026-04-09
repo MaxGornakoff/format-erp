@@ -22,8 +22,14 @@ class UserController extends Controller
         $query = User::query();
         $currentUser = $request->user();
 
-        if ($currentUser->role === 'manager') {
-            $query->where('role', 'worker');
+        if ($currentUser->role === 'worker') {
+            $query->where('role', 'manager');
+        } elseif ($currentUser->role === 'manager') {
+            if ($request->role === 'manager') {
+                $query->where('role', 'manager');
+            } else {
+                $query->where('role', 'worker');
+            }
         } elseif ($request->role) {
             $query->where('role', $request->role);
         }

@@ -41,7 +41,7 @@ class OrderPolicy
      */
     public function update(User $user, Order $order): bool
     {
-        if ($user->role === 'admin') {
+        if (in_array($user->role, ['admin', 'manager'], true)) {
             return true;
         }
 

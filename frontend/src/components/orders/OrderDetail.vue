@@ -23,7 +23,7 @@
       <div class="flex items-start justify-between border-b border-gray-200 pb-4 gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">{{ $t('orders.orderNumber') }}{{ order.id }}</h1>
-          <p class="text-sm text-gray-500 mt-1">{{ order.user?.name || '—' }}</p>
+          <p class="text-sm text-gray-500 mt-1">{{ order.responsible_name || order.user?.name || '—' }}</p>
         </div>
         <div class="flex gap-2 flex-wrap justify-end">
           <Badge :variant="getPriorityVariant(order.priority)">
@@ -40,13 +40,13 @@
           <div class="flex items-center gap-2 mb-1">
             <p class="text-sm text-gray-500">{{ $t('orders.executor') }}</p>
             <button
-              v-if="canAssignExecutor && activeField !== 'user_id'"
+              v-if="canAssignResponsible && activeField !== 'responsible_name'"
               type="button"
               class="inline-flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-blue-50 hover:text-blue-600 disabled:opacity-40 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
               :title="$t('common.edit')"
               :aria-label="$t('common.edit')"
               :disabled="!!savingField || isUpdatingQuickField"
-              @click="startEditing('user_id')"
+              @click="startEditing('responsible_name')"
             >
               <svg viewBox="0 0 20 20" fill="none" class="h-4 w-4" aria-hidden="true">
                 <path d="M13.5 3.5L16.5 6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
@@ -55,22 +55,38 @@
             </button>
           </div>
 
-          <select
-            v-if="activeField === 'user_id' && canAssignExecutor"
-            ref="executorSelectRef"
-            v-model.number="draft.user_id"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            :disabled="savingField === 'user_id'"
-            @change="saveField('user_id')"
-            @blur="saveField('user_id')"
-            @keydown.esc.prevent="cancelEditing('user_id')"
-          >
-            <option :value="undefined" disabled>{{ $t('orders.selectExecutor') }}</option>
-            <option v-for="worker in workers" :key="worker.id" :value="worker.id">
-              {{ worker.name }}
-            </option>
-          </select>
-          <p v-else class="font-semibold">{{ order.user?.name || '—' }}</p>
+          <template v-if="activeField === 'responsible_name' && canAssignResponsible">
+            <div class="relative">
+              <input
+                ref="responsibleInputRef"
+                v-model.trim="draft.responsible_name"
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                :disabled="savingField === 'responsible_name'"
+                @focus="openResponsibleSuggestions"
+                @input="openResponsibleSuggestions"
+                @blur="closeResponsibleSuggestions"
+                @keydown.enter.prevent="saveField('responsible_name')"
+                @keydown.esc.prevent="cancelEditing('responsible_name')"
+              />
+
+              <div
+                v-if="showResponsibleSuggestions && filteredManagers.length > 0"
+                class="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+              >
+                <button
+                  v-for="manager in filteredManagers"
+                  :key="manager.id"
+                  type="button"
+                  class="flex w-full px-3 py-2 text-left text-sm text-gray-900 transition-colors hover:bg-blue-50"
+                  @mousedown.prevent="selectResponsible(manager)"
+                >
+                  {{ manager.name }}
+                </button>
+              </div>
+            </div>
+          </template>
+          <p v-else class="font-semibold">{{ order.responsible_name || order.user?.name || '—' }}</p>
         </div>
 
         <div>
@@ -83,7 +99,7 @@
           <p class="font-semibold">{{ formatDate(order.updated_at, 'full') }}</p>
         </div>
 
-        <div class="group">
+        <div v-if="canViewFinancials" class="group">
           <div class="flex items-center gap-2 mb-1">
             <p class="text-sm text-gray-500">{{ $t('orders.packageCost') }}</p>
             <button
@@ -118,7 +134,7 @@
           <p v-else class="font-semibold">{{ formatCurrency(order.package_cost) }}</p>
         </div>
 
-        <div class="group">
+        <div v-if="canViewFinancials" class="group">
           <div class="flex items-center gap-2 mb-1">
             <p class="text-sm text-gray-500">{{ $t('orders.orderCost') }}</p>
             <button
@@ -290,12 +306,12 @@ interface Props {
   error?: string
 }
 
-interface WorkerOption {
+interface ManagerOption {
   id: number
   name: string
 }
 
-type EditableField = 'description' | 'note' | 'package_cost' | 'order_cost' | 'user_id'
+type EditableField = 'description' | 'note' | 'package_cost' | 'order_cost' | 'responsible_name'
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
@@ -318,9 +334,22 @@ const savingField = ref<EditableField | null>(null)
 const activeField = ref<EditableField | null>(null)
 const errorMessage = ref(props.error)
 const order = ref(props.order)
-const workers = ref<WorkerOption[]>([])
-const executorSelectRef = ref<HTMLSelectElement | null>(null)
+const managers = ref<ManagerOption[]>([])
+const responsibleInputRef = ref<HTMLInputElement | null>(null)
 const packageCostInputRef = ref<HTMLInputElement | null>(null)
+const showResponsibleSuggestions = ref(false)
+let responsibleSuggestionsTimeout: ReturnType<typeof setTimeout> | null = null
+
+const filteredManagers = computed(() => {
+  const query = draft.value.responsible_name.trim().toLowerCase()
+
+  if (!query) {
+    return managers.value
+  }
+
+  const matches = managers.value.filter((manager) => manager.name.toLowerCase().includes(query))
+  return matches.length > 0 ? matches : managers.value
+})
 const orderCostInputRef = ref<HTMLInputElement | null>(null)
 const descriptionTextareaRef = ref<HTMLTextAreaElement | null>(null)
 const noteTextareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -330,13 +359,13 @@ const draft = ref<{
   note: string
   package_cost: number | null | ''
   order_cost: number | null | ''
-  user_id?: number
+  responsible_name: string
 }>({
   description: '',
   note: '',
   package_cost: null,
   order_cost: null,
-  user_id: undefined,
+  responsible_name: '',
 })
 
 const availableStatuses: Order['status'][] = ['new', 'in_progress', 'completed', 'cancelled']
@@ -356,7 +385,7 @@ const syncDraft = (value?: Order) => {
     note: value?.note || '',
     package_cost: value?.package_cost !== null && value?.package_cost !== undefined ? Number(value.package_cost) : null,
     order_cost: value?.order_cost !== null && value?.order_cost !== undefined ? Number(value.order_cost) : null,
-    user_id: value?.user_id,
+    responsible_name: value?.responsible_name || value?.user?.name || '',
   }
 }
 
@@ -367,10 +396,11 @@ watch(() => props.order, (value) => {
 
 const canEdit = computed(() => {
   if (!order.value) return false
-  return authStore.isAdmin || order.value.user_id === authStore.user?.id
+  return authStore.isAdmin || authStore.isManager || order.value.user_id === authStore.user?.id
 })
 
-const canAssignExecutor = computed(() => canEdit.value && (authStore.isAdmin || authStore.isManager))
+const canAssignResponsible = computed(() => canEdit.value)
+const canViewFinancials = computed(() => !authStore.isWorker)
 const canDelete = computed(() => authStore.isAdmin)
 
 const normalizeNumber = (value: unknown) => {
@@ -382,32 +412,55 @@ const normalizeNumber = (value: unknown) => {
   return Number.isNaN(numericValue) ? null : numericValue
 }
 
-const loadWorkers = async () => {
-  if (!canAssignExecutor.value || workers.value.length > 0) {
+const loadManagers = async () => {
+  if (!canAssignResponsible.value || managers.value.length > 0) {
     return
   }
 
   try {
-    const response = await userService.getUsers(1, 100, 'worker')
-    workers.value = response.data.map((worker) => ({
-      id: worker.id,
-      name: worker.name,
-    }))
+    const response = await userService.getUsers(1, 100, 'manager')
+    managers.value = response.data
+      .map((manager) => ({
+        id: manager.id,
+        name: manager.name,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
   } catch (err) {
-    console.error('Failed to load workers:', err)
+    console.error('Failed to load managers:', err)
   }
 }
 
-watch(canAssignExecutor, (value) => {
+const openResponsibleSuggestions = () => {
+  if (responsibleSuggestionsTimeout) {
+    clearTimeout(responsibleSuggestionsTimeout)
+    responsibleSuggestionsTimeout = null
+  }
+
+  showResponsibleSuggestions.value = true
+}
+
+const closeResponsibleSuggestions = () => {
+  responsibleSuggestionsTimeout = setTimeout(() => {
+    showResponsibleSuggestions.value = false
+    void saveField('responsible_name')
+  }, 120)
+}
+
+const selectResponsible = (manager: ManagerOption) => {
+  draft.value.responsible_name = manager.name
+  showResponsibleSuggestions.value = false
+}
+
+watch(canAssignResponsible, (value) => {
   if (value) {
-    loadWorkers()
+    loadManagers()
   }
 }, { immediate: true })
 
 const focusActiveField = () => {
   switch (activeField.value) {
-    case 'user_id':
-      executorSelectRef.value?.focus()
+    case 'responsible_name':
+      responsibleInputRef.value?.focus()
       break
     case 'package_cost':
       packageCostInputRef.value?.focus()
@@ -429,14 +482,18 @@ const startEditing = async (field: EditableField) => {
     return
   }
 
-  if ((field === 'user_id' && !canAssignExecutor.value) || (field !== 'user_id' && !canEdit.value)) {
+  if (
+    (field === 'responsible_name' && !canAssignResponsible.value) ||
+    ((field === 'package_cost' || field === 'order_cost') && !canViewFinancials.value) ||
+    (field !== 'responsible_name' && !canEdit.value)
+  ) {
     return
   }
 
   errorMessage.value = ''
 
-  if (field === 'user_id') {
-    await loadWorkers()
+  if (field === 'responsible_name') {
+    await loadManagers()
   }
 
   activeField.value = field
@@ -466,8 +523,8 @@ const resetFieldValue = (field: EditableField) => {
         ? Number(order.value.order_cost)
         : null
       break
-    case 'user_id':
-      draft.value.user_id = order.value.user_id
+    case 'responsible_name':
+      draft.value.responsible_name = order.value.responsible_name || order.value.user?.name || ''
       break
   }
 }
@@ -494,8 +551,8 @@ const hasFieldChanged = (field: EditableField) => {
       return normalizeNumber(draft.value.package_cost) !== normalizeNumber(order.value.package_cost)
     case 'order_cost':
       return normalizeNumber(draft.value.order_cost) !== normalizeNumber(order.value.order_cost)
-    case 'user_id':
-      return draft.value.user_id !== order.value.user_id
+    case 'responsible_name':
+      return draft.value.responsible_name.trim() !== ((order.value.responsible_name || order.value.user?.name || '').trim())
     default:
       return false
   }
@@ -506,7 +563,7 @@ const validateField = (field: EditableField) => {
     return t('validation.descriptionRequired')
   }
 
-  if (field === 'user_id' && canAssignExecutor.value && !draft.value.user_id) {
+  if (field === 'responsible_name' && canAssignResponsible.value && !draft.value.responsible_name.trim()) {
     return t('validation.executorRequired')
   }
 
@@ -537,8 +594,8 @@ const buildFieldPayload = (field: EditableField): UpdateOrderPayload => {
       return { package_cost: normalizeNumber(draft.value.package_cost) }
     case 'order_cost':
       return { order_cost: normalizeNumber(draft.value.order_cost) }
-    case 'user_id':
-      return { user_id: draft.value.user_id }
+    case 'responsible_name':
+      return { responsible_name: draft.value.responsible_name.trim() }
     default:
       return {}
   }

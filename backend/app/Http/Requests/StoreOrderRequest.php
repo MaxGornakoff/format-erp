@@ -30,6 +30,7 @@ class StoreOrderRequest extends FormRequest
             'priority' => 'required|in:low,medium,high',
             'status' => 'nullable|in:new,in_progress,completed,cancelled',
             'user_id' => 'nullable|exists:users,id',
+            'responsible_name' => 'nullable|string|max:255',
         ];
     }
 }

@@ -96,9 +96,9 @@ export const ru = {
     orderCost: 'Стоимость заказа',
     orderCostPlaceholder: 'Введите стоимость заказа',
     priority: 'Срочность',
-    executor: 'Исполнитель',
-    selectExecutor: 'Выберите исполнителя',
-    autoAssignedWorker: 'Исполнитель назначается автоматически',
+    executor: 'Ответственный',
+    selectExecutor: 'Выберите или впишите ответственного',
+    autoAssignedWorker: 'Ответственный назначается автоматически',
     date: 'Дата',
     orderNumberShort: '№ Заказа',
     description: 'Просмотр и управление всеми заказами',
@@ -107,7 +107,7 @@ export const ru = {
     editOrder: 'Редактировать заказ',
     orderDetails: 'Детали заказа',
     orderNumber: 'Заказ #',
-    createdBy: 'Исполнитель',
+    createdBy: 'Ответственный',
     createdAt: 'Дата создания',
     updatedAt: 'Обновлено',
     viewOrder: 'Просмотр',
@@ -136,7 +136,7 @@ export const ru = {
     filters: {
       searchPlaceholder: 'Поиск по № заказа, описанию или примечанию...',
       allStatuses: 'Все статусы',
-      allExecutors: 'Все исполнители'
+      allExecutors: 'Все ответственные'
     }
   },
 
@@ -211,12 +211,12 @@ export const ru = {
     newOrders: 'Новые заказы',
     inProgress: 'В процессе',
     completed: 'Завершено',
-    topWorkers: 'Лучшие работники',
+    topWorkers: 'Ответственные по выполненным заказам',
     completedCount: 'завершено',
     ordersTrend: 'Заказы созданы (последние 30 дней)',
     usersByRole: 'Пользователи по ролям',
     refreshData: 'Обновить данные',
-    noWorkerData: 'Нет данных о работниках',
+    noWorkerData: 'Нет данных по ответственным',
     noData: 'Нет доступных данных'
   },
 
@@ -227,7 +227,7 @@ export const ru = {
     passwordRequirements: 'Пароль должен содержать буквы и цифры',
     titleRequired: 'Название обязательно',
     descriptionRequired: 'Описание обязательно',
-    executorRequired: 'Выберите исполнителя',
+    executorRequired: 'Укажите ответственного',
     nonNegativeNumber: 'Значение должно быть числом не меньше 0',
     nameRequired: 'Имя обязательно',
     emailRequired: 'Email обязательно'

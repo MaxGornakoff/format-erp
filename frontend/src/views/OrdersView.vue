@@ -96,7 +96,7 @@ const editingOrderData = ref<{
   order_cost: number | null
   priority?: Order['priority']
   status?: Order['status']
-  user_id?: number
+  responsible_name?: string
 } | undefined>(undefined)
 
 const handleCreateOrder = () => {

@@ -118,7 +118,7 @@ const loadStatistics = async () => {
     const response = await analyticsService.dashboard()
     error.value = ''
     stats.value = response.stats
-    topWorkers.value = response.top_workers
+    topWorkers.value = response.top_responsibles ?? response.top_workers ?? []
   } catch (err: any) {
     error.value = err?.response?.data?.message || err?.message || t('messages.failedToLoadStatistics')
   } finally {

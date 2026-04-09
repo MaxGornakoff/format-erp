@@ -30,8 +30,8 @@
             @change="applyFilters"
           >
             <option value="">{{ $t('orders.filters.allExecutors') }}</option>
-            <option v-for="worker in workerOptions" :key="worker.id" :value="String(worker.id)">
-              {{ worker.name }}
+            <option v-for="responsible in store.responsibleOptions" :key="responsible" :value="responsible">
+              {{ responsible }}
             </option>
           </select>
         </div>
@@ -80,7 +80,7 @@
 
       <template #cell-executor="{ row }">
         <div class="min-w-[10rem]">
-          <p class="font-medium text-gray-900 text-[14px]">{{ row.user?.name || '—' }}</p>
+          <p class="font-medium text-gray-900 text-[14px]">{{ row.responsible_name || row.user?.name || '—' }}</p>
         </div>
       </template>
 
@@ -126,7 +126,13 @@
         </div>
       </template>
 
-      <template #pagination-left-extra>
+      <template #pagination-right-extra>
+        <Button @click="$emit('create')">
+          {{ $t('orders.newOrder') }}
+        </Button>
+      </template>
+
+      <template v-if="canViewFinancials" #pagination-left-extra>
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
           <p class="whitespace-nowrap">
             <span class="font-medium text-gray-700">{{ $t('orders.totals.orderCost') }}:</span>
@@ -140,34 +146,41 @@
       </template>
 
       <template v-if="isAdmin" #actions="{ row }">
-        <div class="flex gap-2 justify-center">
-          <Button
-            variant="danger"
-            size="sm"
+        <div class="flex justify-center">
+          <button
+            type="button"
+            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition-colors duration-200 hover:bg-red-100 hover:text-red-700"
+            :title="$t('common.delete')"
+            :aria-label="$t('common.delete')"
             @click.stop="$emit('delete', row.id)"
           >
-            {{ $t('common.delete') }}
-          </Button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              class="h-5 w-5"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75h6a1 1 0 0 1 1 1V6h3a.75.75 0 0 1 0 1.5h-.64l-.72 10.12A2.25 2.25 0 0 1 15.4 19.5H8.6a2.25 2.25 0 0 1-2.24-1.88L5.64 7.5H5A.75.75 0 0 1 5 6h3V4.75a1 1 0 0 1 1-1Z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10 10.5v5m4-5v5" />
+            </svg>
+          </button>
         </div>
       </template>
     </Table>
 
-    <div class="mt-6 flex justify-end">
-      <Button @click="$emit('create')">
-        {{ $t('orders.newOrder') }}
-      </Button>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOrderStore } from '@/stores/orderStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useI18n } from 'vue-i18n'
 import { useFormattedDate } from '@/composables/useFormattedDate'
-import userService, { type User } from '@/services/userService'
 import type { OrderPriority, OrderStatus } from '@/services/orderService'
 import Table from '@/components/ui/Table.vue'
 import Input from '@/components/ui/Input.vue'
@@ -185,7 +198,6 @@ const { formatTableDate } = useFormattedDate()
 const searchQuery = ref('')
 const statusFilter = ref('')
 const executorFilter = ref('')
-const workerOptions = ref<User[]>([])
 
 const columns = computed(() => [
   { key: 'id', label: t('orders.orderNumberShort'), sortable: true },
@@ -193,8 +205,12 @@ const columns = computed(() => [
   { key: 'created_at', label: t('orders.date'), sortable: true },
   { key: 'description', label: t('orders.formDescription') },
   { key: 'note', label: t('orders.note') },
-  { key: 'package_cost', label: t('orders.packageCost'), sortable: true },
-  { key: 'order_cost', label: t('orders.orderCost'), sortable: true },
+  ...(canViewFinancials.value
+    ? [
+        { key: 'package_cost', label: t('orders.packageCost'), sortable: true },
+        { key: 'order_cost', label: t('orders.orderCost'), sortable: true },
+      ]
+    : []),
   { key: 'priority', label: t('orders.priority'), sortable: true },
   { key: 'status', label: t('orders.status'), sortable: true },
 ])
@@ -206,7 +222,8 @@ const pagination = computed(() => ({
 }))
 
 const isAdmin = computed(() => authStore.isAdmin)
-const canFilterByExecutor = computed(() => !authStore.isWorker)
+const canFilterByExecutor = computed(() => true)
+const canViewFinancials = computed(() => !authStore.isWorker)
 
 const getStatusVariant = (status: OrderStatus): 'info' | 'warning' | 'success' | 'danger' | 'default' => {
   const variants: Record<OrderStatus, 'info' | 'warning' | 'success' | 'danger'> = {
@@ -337,20 +354,6 @@ const loadOrders = async () => {
   await store.fetchOrders()
 }
 
-const loadWorkers = async () => {
-  if (!canFilterByExecutor.value) {
-    workerOptions.value = []
-    return
-  }
-
-  try {
-    const response = await userService.getUsers(1, 100, 'worker')
-    workerOptions.value = [...response.data].sort((a, b) => a.name.localeCompare(b.name, 'ru'))
-  } catch {
-    workerOptions.value = []
-  }
-}
-
 watch(
   () => [route.query.status, route.query.search, route.query.executor],
   async () => {
@@ -359,10 +362,6 @@ watch(
   },
   { immediate: true }
 )
-
-onMounted(() => {
-  void loadWorkers()
-})
 
 const emit = defineEmits<{
   'view': [id: number]

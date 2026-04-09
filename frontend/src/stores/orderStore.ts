@@ -30,6 +30,7 @@ export const useOrderStore = defineStore('order', () => {
   const lastPage = ref(1)
   const filteredOrderCostTotal = ref(0)
   const filteredPackageCostTotal = ref(0)
+  const responsibleOptions = ref<string[]>([])
 
   const statusFilter = ref<string | undefined>(undefined)
   const executorFilter = ref<string | undefined>(undefined)
@@ -62,6 +63,7 @@ export const useOrderStore = defineStore('order', () => {
       lastPage.value = response.last_page || 1
       filteredOrderCostTotal.value = Number(response.totals?.order_cost ?? 0)
       filteredPackageCostTotal.value = Number(response.totals?.package_cost ?? 0)
+      responsibleOptions.value = Array.isArray(response.responsibles) ? response.responsibles : []
     } catch (err: any) {
       error.value = getErrorMessage(err, 'Failed to fetch orders')
       throw err
@@ -198,6 +200,7 @@ export const useOrderStore = defineStore('order', () => {
     lastPage,
     filteredOrderCostTotal,
     filteredPackageCostTotal,
+    responsibleOptions,
     statusFilter,
     executorFilter,
     searchQuery,

@@ -29,15 +29,17 @@ class AnalyticsController extends Controller
             'cancelled' => $query->clone()->where('status', 'cancelled')->count(),
         ];
 
-        $topWorkers = User::where('role', 'worker')
-            ->withCount([
-                'orders as completed_count' => function ($q) {
-                    $q->where('status', 'completed');
-                }
-            ])
+        $responsibleExpression = "COALESCE(NULLIF(orders.responsible_name, ''), users.name, '—')";
+
+        $topResponsibles = Order::query()
+            ->leftJoin('users', 'orders.user_id', '=', 'users.id')
+            ->selectRaw("{$responsibleExpression} as name")
+            ->selectRaw("MAX(COALESCE(users.email, '')) as email")
+            ->selectRaw("SUM(CASE WHEN orders.status = 'completed' THEN 1 ELSE 0 END) as completed_count")
+            ->groupByRaw($responsibleExpression)
             ->orderByDesc('completed_count')
             ->limit(5)
-            ->get(['id', 'name', 'email']);
+            ->get();
 
         return response()->json([
             'stats' => [
@@ -48,7 +50,8 @@ class AnalyticsController extends Controller
                 'cancelled_orders' => $ordersByStatus['cancelled'],
             ],
             'orders_by_status' => $ordersByStatus,
-            'top_workers' => $topWorkers,
+            'top_workers' => $topResponsibles,
+            'top_responsibles' => $topResponsibles,
         ]);
     }
 

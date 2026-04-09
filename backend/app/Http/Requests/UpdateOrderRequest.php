@@ -30,6 +30,7 @@ class UpdateOrderRequest extends FormRequest
             'priority' => 'sometimes|in:low,medium,high',
             'status' => 'sometimes|in:new,in_progress,completed,cancelled',
             'user_id' => 'sometimes|nullable|exists:users,id',
+            'responsible_name' => 'sometimes|nullable|string|max:255',
         ];
     }
 }

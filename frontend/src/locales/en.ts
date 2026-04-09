@@ -97,9 +97,9 @@ export const en = {
     orderCost: 'Order Cost',
     orderCostPlaceholder: 'Enter order cost',
     priority: 'Priority',
-    executor: 'Executor',
-    selectExecutor: 'Select executor',
-    autoAssignedWorker: 'Executor is assigned automatically',
+    executor: 'Responsible',
+    selectExecutor: 'Select or type a responsible person',
+    autoAssignedWorker: 'Responsible is assigned automatically',
     date: 'Date',
     orderNumberShort: 'Order #',
     newOrder: '+ New Order',
@@ -107,7 +107,7 @@ export const en = {
     editOrder: 'Edit Order',
     orderDetails: 'Order Details',
     orderNumber: 'Order #',
-    createdBy: 'Executor',
+    createdBy: 'Responsible',
     createdAt: 'Created At',
     updatedAt: 'Updated At',
     viewOrder: 'View',
@@ -136,7 +136,7 @@ export const en = {
     filters: {
       searchPlaceholder: 'Search by order #, description, or note...',
       allStatuses: 'All Statuses',
-      allExecutors: 'All executors'
+      allExecutors: 'All responsible users'
     }
   },
 
@@ -211,12 +211,12 @@ export const en = {
     newOrders: 'New Orders',
     inProgress: 'In Progress',
     completed: 'Completed',
-    topWorkers: 'Top Workers',
+    topWorkers: 'Top Responsible Users',
     completedCount: 'completed',
     ordersTrend: 'Orders Created (Last 30 Days)',
     usersByRole: 'Users by Role',
     refreshData: 'Refresh Data',
-    noWorkerData: 'No worker data',
+    noWorkerData: 'No responsible-user data',
     noData: 'No data available'
   },
 
@@ -227,7 +227,7 @@ export const en = {
     passwordRequirements: 'Password must contain letters and numbers',
     titleRequired: 'Title is required',
     descriptionRequired: 'Description is required',
-    executorRequired: 'Please select an executor',
+    executorRequired: 'Please enter a responsible user',
     nonNegativeNumber: 'Value must be a number greater than or equal to 0',
     nameRequired: 'Name is required',
     emailRequired: 'Email is required'
