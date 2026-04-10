@@ -1,0 +1,4 @@
+Backup created: 09.04.2026 17:11:36,15
+Database: format_management
+Host: 127.0.0.1:3306
+File: C:\Users\maxxx\Documents\githubProjects\format-erp\backups\format_management_backup_3.sql

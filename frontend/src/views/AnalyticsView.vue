@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <div>
       <h1 class="text-3xl font-bold text-gray-900">{{ $t('analytics.title') }}</h1>
-      <p class="text-gray-600 mt-2">{{ $t('analytics.description') }}</p>
+      
     </div>
 
     <!-- Main Stats Panel -->

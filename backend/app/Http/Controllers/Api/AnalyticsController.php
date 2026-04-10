@@ -29,12 +29,13 @@ class AnalyticsController extends Controller
             'cancelled' => $query->clone()->where('status', 'cancelled')->count(),
         ];
 
-        $responsibleExpression = "COALESCE(NULLIF(orders.responsible_name, ''), users.name, '—')";
+        $responsibleExpression = "COALESCE(NULLIF(orders.responsible_name, ''), creators.name, '—')";
 
         $topResponsibles = Order::query()
-            ->leftJoin('users', 'orders.user_id', '=', 'users.id')
+            ->leftJoin('users as creators', 'orders.user_id', '=', 'creators.id')
+            ->leftJoin('users as responsible_users', 'orders.responsible_name', '=', 'responsible_users.name')
             ->selectRaw("{$responsibleExpression} as name")
-            ->selectRaw("MAX(COALESCE(users.email, '')) as email")
+            ->selectRaw("MAX(COALESCE(responsible_users.real_name, CASE WHEN orders.responsible_name IS NULL OR orders.responsible_name = '' THEN creators.real_name ELSE NULL END, '')) as real_name")
             ->selectRaw("SUM(CASE WHEN orders.status = 'completed' THEN 1 ELSE 0 END) as completed_count")
             ->groupByRaw($responsibleExpression)
             ->orderByDesc('completed_count')

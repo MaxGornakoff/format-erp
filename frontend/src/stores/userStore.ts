@@ -140,6 +140,42 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  const deleteUsersBulk = async (ids: number[]) => {
+    const uniqueIds = [...new Set(ids.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0))]
+
+    if (uniqueIds.length === 0) {
+      return
+    }
+
+    isLoading.value = true
+    error.value = null
+
+    try {
+      for (const id of uniqueIds) {
+        await userService.deleteUser(id)
+      }
+
+      users.value = users.value.filter((user) => !uniqueIds.includes(user.id))
+      total.value = Math.max(0, total.value - uniqueIds.length)
+
+      if (currentUser.value && uniqueIds.includes(currentUser.value.id)) {
+        currentUser.value = null
+      }
+
+      if (users.value.length === 0 && currentPage.value > 1) {
+        currentPage.value -= 1
+      }
+
+      await fetchUsers()
+      analyticsStore.invalidateAnalytics('users-bulk-deleted')
+    } catch (err: any) {
+      error.value = getErrorMessage(err, 'Failed to delete selected users')
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   const setRoleFilter = (role: string | undefined) => {
     roleFilter.value = role || undefined
     currentPage.value = 1
@@ -192,6 +228,7 @@ export const useUserStore = defineStore('user', () => {
     createUser,
     updateUser,
     deleteUser,
+    deleteUsersBulk,
     setRoleFilter,
     setSearchQuery,
     setSorting,

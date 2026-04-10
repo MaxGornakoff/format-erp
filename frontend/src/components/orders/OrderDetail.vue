@@ -23,7 +23,8 @@
       <div class="flex items-start justify-between border-b border-gray-200 pb-4 gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">{{ $t('orders.orderNumber') }}{{ order.id }}</h1>
-          <p class="text-sm text-gray-500 mt-1">{{ order.responsible_name || order.user?.name || '—' }}</p>
+          <p class="mt-1 text-sm text-gray-500">{{ displayResponsibleName }}</p>
+          <p v-if="displayResponsibleRealName" class="mt-1 text-xs text-gray-400">{{ displayResponsibleRealName }}</p>
         </div>
         <div class="flex gap-2 flex-wrap justify-end">
           <Badge :variant="getPriorityVariant(order.priority)">
@@ -61,7 +62,13 @@
                 ref="responsibleInputRef"
                 v-model.trim="draft.responsible_name"
                 type="text"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                name="responsible_lookup"
+                autocomplete="new-password"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck="false"
+                data-lpignore="true"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 :disabled="savingField === 'responsible_name'"
                 @focus="openResponsibleSuggestions"
                 @input="openResponsibleSuggestions"
@@ -78,15 +85,19 @@
                   v-for="manager in filteredManagers"
                   :key="manager.id"
                   type="button"
-                  class="flex w-full px-3 py-2 text-left text-sm text-gray-900 transition-colors hover:bg-blue-50"
+                  class="flex w-full flex-col px-3 py-2 text-left transition-colors hover:bg-blue-50"
                   @mousedown.prevent="selectResponsible(manager)"
                 >
-                  {{ manager.name }}
+                  <span class="text-sm font-medium text-gray-900">{{ manager.name }}</span>
+                  <span v-if="manager.real_name" class="text-xs text-gray-500">{{ manager.real_name }}</span>
                 </button>
               </div>
             </div>
           </template>
-          <p v-else class="font-semibold">{{ order.responsible_name || order.user?.name || '—' }}</p>
+          <div v-else>
+            <p class="font-semibold">{{ displayResponsibleName }}</p>
+            <p v-if="displayResponsibleRealName" class="text-xs text-gray-500">{{ displayResponsibleRealName }}</p>
+          </div>
         </div>
 
         <div>
@@ -241,6 +252,117 @@
         <p v-else class="text-gray-700 whitespace-pre-wrap">{{ order.note || '—' }}</p>
       </div>
 
+      <div class="border-t border-gray-200 pt-6">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">{{ $t('orders.images') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">
+              {{ $t('orders.imageRules', { size: ORDER_IMAGE_MAX_SIZE_MB, count: ORDER_IMAGE_MAX_FILES }) }}
+            </p>
+          </div>
+          <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+            {{ (order.images || []).length }}/{{ ORDER_IMAGE_MAX_FILES }}
+          </span>
+        </div>
+
+        <OrderImageGallery
+          :images="order.images || []"
+          :allow-delete="canEdit"
+          :allow-set-cover="canEdit"
+          @delete="deleteExistingImage"
+          @make-cover="setCoverImage"
+        />
+
+        <div v-if="canEdit" class="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+          <div
+            class="rounded-xl border-2 border-dashed p-4 text-center transition-colors"
+            :class="isDraggingDetailImages ? 'border-blue-400 bg-blue-50' : 'border-slate-300 bg-white/80'"
+            @dragenter.prevent="isDraggingDetailImages = true"
+            @dragover.prevent="isDraggingDetailImages = true"
+            @dragleave.prevent="isDraggingDetailImages = false"
+            @drop="handleDetailImageDrop"
+          >
+            <p class="text-sm font-semibold text-slate-900">
+              {{ isDraggingDetailImages ? $t('orders.dragDropActive') : $t('orders.dragDropTitle') }}
+            </p>
+            <p class="mt-1 text-xs text-slate-500">
+              {{ $t('orders.dragDropSubtitle') }}
+            </p>
+
+            <div class="mt-3 flex flex-wrap items-center justify-center gap-2">
+              <label class="inline-flex cursor-pointer items-center rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-50">
+                <input
+                  type="file"
+                  multiple
+                  :accept="ORDER_IMAGE_ACCEPT_ATTRIBUTE"
+                  class="hidden"
+                  @change="handleDetailImageSelection"
+                />
+                {{ $t('orders.addImages') }}
+              </label>
+
+              <Button
+                v-if="pendingImagePreviews.length"
+                variant="secondary"
+                type="button"
+                :disabled="isUpdatingImages"
+                @click="clearPendingImages"
+              >
+                {{ $t('orders.clearSelectedImages') }}
+              </Button>
+
+              <Button
+                type="button"
+                :loading="isUpdatingImages"
+                :disabled="!pendingImagePreviews.length"
+                @click="uploadPendingImages"
+              >
+                {{ $t('orders.uploadImages') }}
+              </Button>
+            </div>
+          </div>
+
+          <p v-if="imageErrorMessage" class="mt-3 text-sm text-red-500">{{ imageErrorMessage }}</p>
+
+          <div v-if="pendingImagePreviews.length" class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+            <div
+              v-for="(preview, index) in pendingImagePreviews"
+              :key="`${preview.file.name}-${preview.url}`"
+              class="relative overflow-hidden rounded-xl border border-blue-200 bg-white"
+            >
+              <img :src="preview.url" :alt="preview.file.name" class="aspect-[4/3] w-full object-cover" />
+              <label
+                class="absolute right-2 top-2 inline-flex items-center justify-center rounded-md bg-white/95 p-1 shadow-sm"
+                :title="pendingCoverIndex === index ? $t('orders.cover') : $t('orders.makeCover')"
+                @click.stop
+              >
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:outline-none focus:ring-0"
+                  :checked="pendingCoverIndex === index"
+                  :aria-label="pendingCoverIndex === index ? $t('orders.cover') : $t('orders.makeCover')"
+                  @change="makePendingUploadCover(index)"
+                />
+              </label>
+              <div class="flex items-center justify-between p-2">
+                <span class="text-[11px] text-blue-600">{{ $t('orders.newImage') }}</span>
+                <button
+                  type="button"
+                  class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                  :title="$t('orders.deleteImage')"
+                  :aria-label="$t('orders.deleteImage')"
+                  @click="removePendingImage(index)"
+                >
+                  <svg viewBox="0 0 20 20" fill="none" class="h-4 w-4" aria-hidden="true">
+                    <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div v-if="canEdit" class="border-t border-gray-200 pt-6">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('orders.changeStatus') }}</h2>
         <div class="flex gap-2 flex-wrap">
@@ -288,7 +410,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useOrderStore } from '@/stores/orderStore'
 import { useI18n } from 'vue-i18n'
@@ -297,7 +419,15 @@ import userService from '@/services/userService'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Alert from '@/components/ui/Alert.vue'
-import type { Order, OrderPriority, UpdateOrderPayload } from '@/services/orderService'
+import OrderImageGallery from '@/components/orders/OrderImageGallery.vue'
+import {
+  ORDER_IMAGE_ACCEPT_ATTRIBUTE,
+  ORDER_IMAGE_ALLOWED_MIME_TYPES,
+  ORDER_IMAGE_MAX_FILES,
+  ORDER_IMAGE_MAX_SIZE_BYTES,
+  ORDER_IMAGE_MAX_SIZE_MB,
+} from '@/services/orderService'
+import type { Order, OrderImage, OrderPriority, UpdateOrderPayload } from '@/services/orderService'
 
 interface Props {
   orderId: number
@@ -309,6 +439,12 @@ interface Props {
 interface ManagerOption {
   id: number
   name: string
+  real_name?: string | null
+}
+
+interface PendingImagePreview {
+  file: File
+  url: string
 }
 
 type EditableField = 'description' | 'note' | 'package_cost' | 'order_cost' | 'responsible_name'
@@ -358,12 +494,32 @@ const filteredManagers = computed(() => {
     return sortedManagers
   }
 
-  const matches = sortedManagers.filter((manager) => manager.name.toLowerCase().includes(selectedResponsible))
+  const matches = sortedManagers.filter((manager) => {
+    return manager.name.toLowerCase().includes(selectedResponsible)
+      || (manager.real_name ?? '').toLowerCase().includes(selectedResponsible)
+  })
+
   return matches.length > 0 ? matches : sortedManagers
+})
+
+const displayResponsibleName = computed(() => order.value?.responsible_name || order.value?.user?.name || '—')
+const displayResponsibleRealName = computed(() => {
+  if (!order.value) {
+    return ''
+  }
+
+  return order.value.responsible_user?.real_name
+    || order.value.responsibleUser?.real_name
+    || (!order.value.responsible_name ? order.value.user?.real_name ?? '' : '')
 })
 const orderCostInputRef = ref<HTMLInputElement | null>(null)
 const descriptionTextareaRef = ref<HTMLTextAreaElement | null>(null)
 const noteTextareaRef = ref<HTMLTextAreaElement | null>(null)
+const pendingImagePreviews = ref<PendingImagePreview[]>([])
+const isUpdatingImages = ref(false)
+const imageErrorMessage = ref('')
+const isDraggingDetailImages = ref(false)
+const pendingCoverIndex = ref<number | null>(null)
 
 const draft = ref<{
   description: string
@@ -405,6 +561,152 @@ watch(() => props.order, (value) => {
   syncDraft(value)
 }, { immediate: true })
 
+const clearPendingImages = () => {
+  pendingImagePreviews.value.forEach((preview) => URL.revokeObjectURL(preview.url))
+  pendingImagePreviews.value = []
+  pendingCoverIndex.value = null
+}
+
+const processDetailFiles = (selectedFiles: File[]) => {
+  const currentImageCount = (order.value?.images?.length ?? 0) + pendingImagePreviews.value.length
+
+  imageErrorMessage.value = ''
+
+  if (currentImageCount >= ORDER_IMAGE_MAX_FILES) {
+    imageErrorMessage.value = t('orders.imageLimitReached', { count: ORDER_IMAGE_MAX_FILES })
+    return
+  }
+
+  const accepted: PendingImagePreview[] = []
+
+  for (const file of selectedFiles) {
+    if (!ORDER_IMAGE_ALLOWED_MIME_TYPES.includes(file.type as typeof ORDER_IMAGE_ALLOWED_MIME_TYPES[number])) {
+      imageErrorMessage.value = t('orders.invalidImageFormat')
+      continue
+    }
+
+    if (file.size > ORDER_IMAGE_MAX_SIZE_BYTES) {
+      imageErrorMessage.value = t('orders.imageTooLarge', { size: ORDER_IMAGE_MAX_SIZE_MB })
+      continue
+    }
+
+    if ((order.value?.images?.length ?? 0) + pendingImagePreviews.value.length + accepted.length >= ORDER_IMAGE_MAX_FILES) {
+      imageErrorMessage.value = t('orders.imageLimitReached', { count: ORDER_IMAGE_MAX_FILES })
+      break
+    }
+
+    accepted.push({
+      file,
+      url: URL.createObjectURL(file),
+    })
+  }
+
+  pendingImagePreviews.value = [...pendingImagePreviews.value, ...accepted]
+}
+
+const handleDetailImageSelection = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  processDetailFiles(Array.from(input.files || []))
+  input.value = ''
+}
+
+const handleDetailImageDrop = (event: DragEvent) => {
+  event.preventDefault()
+  isDraggingDetailImages.value = false
+  processDetailFiles(Array.from(event.dataTransfer?.files || []))
+}
+
+const removePendingImage = (index: number) => {
+  const [removed] = pendingImagePreviews.value.splice(index, 1)
+
+  if (removed) {
+    URL.revokeObjectURL(removed.url)
+  }
+
+  if (pendingCoverIndex.value === index) {
+    pendingCoverIndex.value = null
+  } else if (pendingCoverIndex.value !== null && pendingCoverIndex.value > index) {
+    pendingCoverIndex.value -= 1
+  }
+
+  imageErrorMessage.value = ''
+}
+
+const makePendingUploadCover = (index: number) => {
+  pendingCoverIndex.value = index
+}
+
+const uploadPendingImages = async () => {
+  if (!order.value || pendingImagePreviews.value.length === 0) {
+    return
+  }
+
+  isUpdatingImages.value = true
+
+  try {
+    const updatedOrder = await orderStore.updateOrder(props.orderId, {
+      images: pendingImagePreviews.value.map((preview) => preview.file),
+      cover_upload_index: pendingCoverIndex.value ?? undefined,
+    })
+
+    order.value = updatedOrder
+    syncDraft(updatedOrder)
+    clearPendingImages()
+    imageErrorMessage.value = ''
+    errorMessage.value = ''
+  } catch (err: any) {
+    imageErrorMessage.value = getFirstErrorMessage(err, t('messages.failedToSaveOrder'))
+  } finally {
+    isUpdatingImages.value = false
+  }
+}
+
+const deleteExistingImage = async (image: OrderImage) => {
+  if (!order.value) {
+    return
+  }
+
+  isUpdatingImages.value = true
+
+  try {
+    const updatedOrder = await orderStore.updateOrder(props.orderId, {
+      deleted_image_ids: [image.id],
+    })
+
+    order.value = updatedOrder
+    syncDraft(updatedOrder)
+    imageErrorMessage.value = ''
+    errorMessage.value = ''
+  } catch (err: any) {
+    imageErrorMessage.value = getFirstErrorMessage(err, t('messages.failedToSaveOrder'))
+  } finally {
+    isUpdatingImages.value = false
+  }
+}
+
+const setCoverImage = async (image: OrderImage) => {
+  if (!order.value) {
+    return
+  }
+
+  isUpdatingImages.value = true
+
+  try {
+    const updatedOrder = await orderStore.updateOrder(props.orderId, {
+      cover_image_id: image.id,
+    })
+
+    order.value = updatedOrder
+    syncDraft(updatedOrder)
+    imageErrorMessage.value = ''
+    errorMessage.value = ''
+  } catch (err: any) {
+    imageErrorMessage.value = getFirstErrorMessage(err, t('messages.failedToSaveOrder'))
+  } finally {
+    isUpdatingImages.value = false
+  }
+}
+
 const canEdit = computed(() => {
   if (!order.value) return false
   return authStore.isAdmin || authStore.isManager || order.value.user_id === authStore.user?.id
@@ -434,6 +736,7 @@ const loadManagers = async () => {
       .map((manager) => ({
         id: manager.id,
         name: manager.name,
+        real_name: manager.real_name,
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
   } catch (err) {
@@ -747,5 +1050,9 @@ const updatePriority = async (newPriority: OrderPriority) => {
     isUpdatingQuickField.value = false
   }
 }
+
+onBeforeUnmount(() => {
+  clearPendingImages()
+})
 </script>
 

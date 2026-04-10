@@ -32,17 +32,12 @@
         />
 
         <div>
-        
-          <select
+          <FilterSelect
             v-model="actionFilter"
-            class="w-full h-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            :options="actionOptions"
+            :placeholder="$t('history.filters.allActions')"
             @change="applyFilters"
-          >
-            <option value="">{{ $t('history.filters.allActions') }}</option>
-            <option v-for="option in actionOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
+          />
         </div>
 
         <div class="flex items-end gap-2"></div>
@@ -131,6 +126,7 @@ import { useHistoryStore } from '@/stores/historyStore'
 import type { ActivityLog } from '@/services/historyService'
 import Table from '@/components/ui/Table.vue'
 import Input from '@/components/ui/Input.vue'
+import FilterSelect from '@/components/ui/FilterSelect.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Alert from '@/components/ui/Alert.vue'
@@ -152,6 +148,7 @@ const columns = computed(() => [
 ])
 
 const actionOptions = computed(() => [
+  { value: '', label: t('history.filters.allActions') },
   { value: 'session.login', label: formatAction('session.login') },
   { value: 'session.logout', label: formatAction('session.logout') },
   { value: 'order.create', label: formatAction('order.create') },

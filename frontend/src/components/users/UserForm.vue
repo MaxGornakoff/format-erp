@@ -52,6 +52,14 @@
       <p v-if="errors.role" class="mt-1 text-sm text-red-500">{{ errors.role }}</p>
     </div>
 
+    <Input
+      v-if="form.role === 'manager'"
+      v-model="form.real_name"
+      :label="$t('users.realName')"
+      :placeholder="$t('users.realNamePlaceholder')"
+      :error="errors.real_name"
+    />
+
     <div class="rounded-lg border border-gray-200 p-3 bg-gray-50">
       <label class="flex items-start gap-3 cursor-pointer">
         <input
@@ -107,6 +115,7 @@ interface Props {
   userId?: number
   initialData?: {
     name: string
+    real_name?: string | null
     email: string
     role: User['role']
     is_tracked: boolean
@@ -123,8 +132,9 @@ const store = useUserStore()
 const { t } = useI18n()
 const isEdit = computed(() => !!props.userId)
 
-const form = ref<{ name: string; email: string; password: string; role: User['role']; is_tracked: boolean }>({
+const form = ref<{ name: string; real_name: string; email: string; password: string; role: User['role']; is_tracked: boolean }>({
   name: '',
+  real_name: '',
   email: '',
   password: '',
   role: 'worker',
@@ -134,6 +144,7 @@ const form = ref<{ name: string; email: string; password: string; role: User['ro
 const syncForm = () => {
   form.value = {
     name: props.initialData?.name || '',
+    real_name: props.initialData?.real_name || '',
     email: props.initialData?.email || '',
     password: '',
     role: props.initialData?.role || 'worker',
@@ -142,6 +153,11 @@ const syncForm = () => {
 }
 
 watch(() => props.initialData, syncForm, { immediate: true, deep: true })
+watch(() => form.value.role, (role) => {
+  if (role !== 'manager') {
+    form.value.real_name = ''
+  }
+})
 const errors = ref<Record<string, string>>({})
 const generalError = ref('')
 const isSubmitting = ref(false)
@@ -182,6 +198,7 @@ const handleSubmit = async () => {
     if (isEdit.value && props.userId) {
       await store.updateUser(props.userId, {
         name: form.value.name,
+        real_name: form.value.role === 'manager' ? (form.value.real_name.trim() || null) : null,
         email: form.value.email,
         role: form.value.role,
         is_tracked: form.value.is_tracked,
@@ -189,6 +206,7 @@ const handleSubmit = async () => {
     } else {
       await store.createUser({
         name: form.value.name,
+        real_name: form.value.role === 'manager' ? (form.value.real_name.trim() || null) : null,
         email: form.value.email,
         password: form.value.password,
         role: form.value.role,

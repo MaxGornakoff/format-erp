@@ -1,8 +1,8 @@
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div class="bg-white rounded-lg shadow-lg max-w-md w-full mx-4" @click.stop>
+      <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4 py-6">
+        <div class="mx-4 flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-lg" @click.stop>
           <!-- Header -->
           <div class="flex items-center justify-between p-4 border-b border-gray-200">
             <h2 class="text-lg font-semibold text-gray-900">
@@ -19,7 +19,7 @@
           </div>
 
           <!-- Body -->
-          <div class="p-4">
+          <div class="overflow-y-auto p-4">
             <slot />
           </div>
 

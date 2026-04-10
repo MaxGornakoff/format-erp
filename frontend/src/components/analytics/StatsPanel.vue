@@ -64,7 +64,7 @@
         <div v-for="(worker, idx) in topWorkers" :key="idx" class="flex items-center justify-between pb-3 border-b border-gray-200 last:border-0">
           <div>
             <p class="font-medium text-gray-900">{{ worker.name }}</p>
-            <p class="text-sm text-gray-500">{{ worker.email }}</p>
+            <p v-if="worker.real_name" class="mt-0.5 text-xs text-gray-500">{{ worker.real_name }}</p>
           </div>
           <Badge variant="success">
             {{ worker.completed_count }} {{ $t('analytics.completedCount') }}
@@ -98,7 +98,8 @@ interface Stats {
 
 interface Worker {
   name: string
-  email: string
+  real_name?: string | null
+  email?: string | null
   completed_count: number
 }
 

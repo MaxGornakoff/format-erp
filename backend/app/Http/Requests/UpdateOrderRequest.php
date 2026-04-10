@@ -31,6 +31,12 @@ class UpdateOrderRequest extends FormRequest
             'status' => 'sometimes|in:new,in_progress,completed,cancelled',
             'user_id' => 'sometimes|nullable|exists:users,id',
             'responsible_name' => 'sometimes|nullable|string|max:255',
+            'images' => 'sometimes|array|max:10',
+            'images.*' => 'file|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'deleted_image_ids' => 'sometimes|array',
+            'deleted_image_ids.*' => 'integer|exists:order_images,id',
+            'cover_image_id' => 'sometimes|nullable|integer|exists:order_images,id',
+            'cover_upload_index' => 'sometimes|nullable|integer|min:0|max:9',
         ];
     }
 }

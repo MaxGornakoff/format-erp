@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+    private const PRIMARY_ADMIN_EMAIL = 'admin@example.com';
+
     /**
      * Display a listing of the resource.
      */
@@ -38,6 +40,7 @@ class UserController extends Controller
         if ($request->search) {
             $query->where(function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('real_name', 'like', '%' . $request->search . '%')
                   ->orWhere('email', 'like', '%' . $request->search . '%');
             });
         }
@@ -76,11 +79,14 @@ class UserController extends Controller
 
         $currentUser = $request->user();
 
+        $role = (string) ($request->role ?? 'worker');
+
         $user = User::create([
             'name' => $request->name,
+            'real_name' => $this->normalizeRealName($request->input('real_name'), $role),
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role ?? 'worker',
+            'role' => $role,
             'is_tracked' => $request->boolean('is_tracked'),
         ]);
 
@@ -153,6 +159,16 @@ class UserController extends Controller
             unset($data['password']);
         }
 
+        if ($this->isProtectedPrimaryAdmin($user) && $this->hasProtectedFieldChanges($user, $data)) {
+            abort(403, 'Protected fields of the primary administrator account cannot be changed.');
+        }
+
+        $nextRole = (string) ($data['role'] ?? $user->role);
+
+        if (array_key_exists('real_name', $data) || ($nextRole !== 'manager' && !empty($user->real_name))) {
+            $data['real_name'] = $this->normalizeRealName($data['real_name'] ?? $user->real_name, $nextRole);
+        }
+
         $user->update($data);
 
         ActivityLogger::log(
@@ -195,6 +211,12 @@ class UserController extends Controller
     {
         $this->authorize('delete', $user);
 
+        abort_if(
+            $this->isProtectedPrimaryAdmin($user),
+            403,
+            'The primary administrator account cannot be deleted.'
+        );
+
         $targetUserId = $user->id;
 
         ActivityLogger::log(
@@ -212,5 +234,39 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'User deleted successfully']);
+    }
+
+    private function isProtectedPrimaryAdmin(User $user): bool
+    {
+        return $user->role === 'admin'
+            && strcasecmp((string) $user->email, self::PRIMARY_ADMIN_EMAIL) === 0;
+    }
+
+    private function hasProtectedFieldChanges(User $user, array $data): bool
+    {
+        if (array_key_exists('email', $data) && strcasecmp((string) $data['email'], (string) $user->email) !== 0) {
+            return true;
+        }
+
+        if (array_key_exists('role', $data) && (string) $data['role'] !== (string) $user->role) {
+            return true;
+        }
+
+        if (array_key_exists('is_tracked', $data) && (bool) $data['is_tracked'] !== (bool) $user->is_tracked) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function normalizeRealName(mixed $value, string $role): ?string
+    {
+        if ($role !== 'manager') {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        return $normalized !== '' ? $normalized : null;
     }
 }

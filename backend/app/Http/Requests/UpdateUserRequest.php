@@ -27,6 +27,7 @@ class UpdateUserRequest extends FormRequest
 
         return [
             'name' => 'sometimes|string|max:255',
+            'real_name' => 'nullable|string|max:255',
             'email' => [
                 'sometimes',
                 'email',

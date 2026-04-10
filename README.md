@@ -27,7 +27,7 @@
 
 ### Основные функции
 
-- ✅ **Аутентификация и авторизация** - Email/пароль + token-based (Sanctum)
+- ✅ **Аутентификация и авторизация** - Email/пароль + session/cookie auth (Laravel Sanctum)
 - ✅ **CRUD заявок** - Создание, чтение, обновление, удаление с историей
 - ✅ **Система ролей** - Worker, Manager, Admin с разными уровнями доступа
 - ✅ **Управление пользователями** - Только для админа
@@ -52,7 +52,7 @@
 - **PHP 8.2+**
 - **Laravel 11+** - Web Framework
 - **Eloquent ORM** - Database ORM
-- **Laravel Sanctum** - API Auth
+- **Laravel Sanctum** - Session/Cookie Auth
 - **MySQL 8.0+** - Database
 
 ---
@@ -161,13 +161,8 @@ Worker 3:
 Email: worker3@example.com
 Password: Worker123
 ```
-Исполнитель:
-worker@format.ru
-hGrjkll^56782
 
-Менеджер №1:
-manager1@format.ru
-hfldjYTR453@df
+> Используйте только актуальные demo-аккаунты выше. Устаревшие записи были удалены из README.
 
 ---
 

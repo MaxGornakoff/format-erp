@@ -9,6 +9,7 @@
             :draggable="isColumnDraggable(column)"
             :class="[
               'px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap select-none',
+              column.key === 'select' && 'table-select-column table-select-column-header !w-10 !min-w-10 !max-w-10 !px-1.5 text-center',
               column.sortable && 'hover:bg-[#2563eb] transition-colors',
               isColumnDraggable(column) && 'cursor-grab active:cursor-grabbing',
               dragOverColumnKey === column.key && 'bg-[#2563eb]',
@@ -21,7 +22,7 @@
             @drop="handleDrop($event, column)"
             @dragend="handleDragEnd"
           >
-            <div class="flex items-center gap-2 text-[14px] text-white">
+            <div class="flex items-center gap-2 text-[12px] text-white">
               <svg
                 v-if="isColumnDraggable(column)"
                 viewBox="0 0 20 20"
@@ -37,7 +38,9 @@
                 <circle cx="11.5" cy="14.5" r="1.1" />
               </svg>
 
-              <span>{{ column.label }}</span>
+              <slot :name="`header-${column.key}`" :column="column">
+                <span>{{ column.label }}</span>
+              </slot>
 
               <span v-if="column.sortable && sortField === column.key" class="text-white">
                 {{ sortDirection === 'asc' ? '↑' : '↓' }}
@@ -62,7 +65,10 @@
           <td
             v-for="column in displayedColumns"
             :key="column.key"
-            class="px-4 py-3 text-gray-700 align-middle text-[14px]"
+            :class="[
+              'pl-9 px-4 py-2 text-gray-700 align-middle text-[14px]',
+              column.key === 'select' && 'table-select-column table-select-column-cell !w-10 !min-w-10 !max-w-10 !px-1 !pl-1 !pr-1 text-center'
+            ]"
           >
             <slot :name="`cell-${column.key}`" :row="row" :value="row[column.key as keyof typeof row]">
               {{ row[column.key as keyof typeof row] }}

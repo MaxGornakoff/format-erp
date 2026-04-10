@@ -1,32 +1,29 @@
 <template>
   <div class="space-y-4">
     <h1 class="text-3xl font-bold text-gray-900">{{ $t('users.title') }}</h1>
-    <p class="text-gray-600">{{ $t('users.description') }}</p>
+  
 
-    <!-- Modal for Create/Edit -->
-    <Modal v-model="showModal" @submit="handleModalSubmit">
+    <Modal v-model="showCreateModal" @submit="handleModalSubmit">
       <template #header>
-        {{ editingUserId ? $t('users.editUser') : $t('users.createUser') }}
+        {{ $t('users.createUser') }}
       </template>
       <UserForm
-        :user-id="editingUserId"
-        :initial-data="editingUserData"
-        @cancel="showModal = false"
+        @cancel="showCreateModal = false"
         @success="handleFormSuccess"
       />
     </Modal>
 
-    <!-- Users Table -->
     <UsersTable
       @create="handleCreateUser"
-      @edit="handleEditUser"
+      @view="handleViewUser"
       @delete="handleDeleteUser"
+      @bulk-delete="handleBulkDeleteUsers"
     />
 
     <ConfirmDialog
       v-model="showDeleteDialog"
       :title="$t('common.warning')"
-      :message="$t('users.confirmDelete')"
+      :message="deleteDialogMessage"
       :confirm-text="$t('common.delete')"
       :cancel-text="$t('common.cancel')"
       confirm-variant="danger"
@@ -46,29 +43,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import type { User } from '@/services/userService'
+import { isPrimaryAdminUser } from '@/services/userService'
 import { useUserStore } from '@/stores/userStore'
 import Modal from '@/components/ui/Modal.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import UsersTable from '@/components/users/UsersTable.vue'
 import UserForm from '@/components/users/UserForm.vue'
 
+const router = useRouter()
 const store = useUserStore()
 const { t } = useI18n()
-const showModal = ref(false)
+const showCreateModal = ref(false)
 const showDeleteDialog = ref(false)
 const showInfoDialog = ref(false)
 const dialogMessage = ref('')
-const pendingDeleteUserId = ref<number | null>(null)
-const editingUserId = ref<number | undefined>(undefined)
-const editingUserData = ref<{ name: string; email: string; role: User['role']; is_tracked: boolean } | undefined>(undefined)
+const pendingDeleteUserIds = ref<number[]>([])
+
+const deleteDialogMessage = computed(() => (
+  pendingDeleteUserIds.value.length > 1
+    ? t('users.confirmBulkDelete', { count: pendingDeleteUserIds.value.length })
+    : t('users.confirmDelete')
+))
 
 const handleCreateUser = () => {
-  editingUserId.value = undefined
-  editingUserData.value = undefined
-  showModal.value = true
+  showCreateModal.value = true
 }
 
 const showErrorDialog = (message: string) => {
@@ -76,47 +77,64 @@ const showErrorDialog = (message: string) => {
   showInfoDialog.value = true
 }
 
-const handleEditUser = async (id: number) => {
-  try {
-    const user = store.users.find((item) => item.id === id) ?? await store.fetchUser(id)
-
-    editingUserId.value = id
-    editingUserData.value = {
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      is_tracked: user.is_tracked,
-    }
-    showModal.value = true
-  } catch (err: any) {
-    showErrorDialog(err?.response?.data?.message || err?.message || t('messages.failedToLoadUsers'))
-  }
+const handleViewUser = (id: number) => {
+  router.push(`/users/${id}`)
 }
 
 const handleDeleteUser = (id: number) => {
-  pendingDeleteUserId.value = id
+  const user = store.users.find((item) => item.id === id)
+
+  if (isPrimaryAdminUser(user)) {
+    showErrorDialog(t('users.primaryAdminProtected'))
+    return
+  }
+
+  pendingDeleteUserIds.value = [id]
+  showDeleteDialog.value = true
+}
+
+const handleBulkDeleteUsers = (ids: number[]) => {
+  const deletableIds = ids.filter((id) => {
+    const user = store.users.find((item) => item.id === id)
+    return !isPrimaryAdminUser(user)
+  })
+
+  if (deletableIds.length === 0) {
+    showErrorDialog(t('users.primaryAdminProtected'))
+    return
+  }
+
+  pendingDeleteUserIds.value = deletableIds
   showDeleteDialog.value = true
 }
 
 const confirmDeleteUser = async () => {
-  if (!pendingDeleteUserId.value) {
+  if (pendingDeleteUserIds.value.length === 0) {
     return
   }
 
   try {
-    await store.deleteUser(pendingDeleteUserId.value)
+    if (pendingDeleteUserIds.value.length > 1) {
+      await store.deleteUsersBulk(pendingDeleteUserIds.value)
+    } else {
+      const userId = pendingDeleteUserIds.value[0]
+
+      if (userId === undefined) {
+        return
+      }
+
+      await store.deleteUser(userId)
+    }
   } catch (err: any) {
     showErrorDialog(err?.response?.data?.message || err?.message || t('messages.failedToDeleteUser'))
   } finally {
-    pendingDeleteUserId.value = null
+    pendingDeleteUserIds.value = []
     showDeleteDialog.value = false
   }
 }
 
 const handleFormSuccess = async () => {
-  showModal.value = false
-  editingUserId.value = undefined
-  editingUserData.value = undefined
+  showCreateModal.value = false
   await store.fetchUsers()
 }
 

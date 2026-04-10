@@ -9,9 +9,10 @@ export interface DashboardStats {
 }
 
 export interface TopWorker {
-  id: number
+  id?: number
   name: string
-  email: string
+  real_name?: string | null
+  email?: string | null
   completed_count: number
 }
 

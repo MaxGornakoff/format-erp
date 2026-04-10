@@ -14,42 +14,48 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create admin user
-        User::create([
-            'name' => 'Admin User',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('Admin123'),
-            'role' => 'admin',
-        ]);
+        $users = [
+            [
+                'name' => 'Admin User',
+                'email' => 'admin@example.com',
+                'password' => 'Admin123',
+                'role' => 'admin',
+            ],
+            [
+                'name' => 'Manager User',
+                'email' => 'manager@example.com',
+                'password' => 'Manager123',
+                'role' => 'manager',
+            ],
+            [
+                'name' => 'Worker One',
+                'email' => 'worker1@example.com',
+                'password' => 'Worker123',
+                'role' => 'worker',
+            ],
+            [
+                'name' => 'Worker Two',
+                'email' => 'worker2@example.com',
+                'password' => 'Worker123',
+                'role' => 'worker',
+            ],
+            [
+                'name' => 'Worker Three',
+                'email' => 'worker3@example.com',
+                'password' => 'Worker123',
+                'role' => 'worker',
+            ],
+        ];
 
-        // Create manager user
-        User::create([
-            'name' => 'Manager User',
-            'email' => 'manager@example.com',
-            'password' => Hash::make('Manager123'),
-            'role' => 'manager',
-        ]);
-
-        // Create worker users
-        User::create([
-            'name' => 'Worker One',
-            'email' => 'worker1@example.com',
-            'password' => Hash::make('Worker123'),
-            'role' => 'worker',
-        ]);
-
-        User::create([
-            'name' => 'Worker Two',
-            'email' => 'worker2@example.com',
-            'password' => Hash::make('Worker123'),
-            'role' => 'worker',
-        ]);
-
-        User::create([
-            'name' => 'Worker Three',
-            'email' => 'worker3@example.com',
-            'password' => Hash::make('Worker123'),
-            'role' => 'worker',
-        ]);
+        foreach ($users as $user) {
+            User::updateOrCreate(
+                ['email' => $user['email']],
+                [
+                    'name' => $user['name'],
+                    'password' => Hash::make($user['password']),
+                    'role' => $user['role'],
+                ],
+            );
+        }
     }
 }

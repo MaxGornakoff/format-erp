@@ -1,7 +1,7 @@
 <template>
   <div>
-    <div class="bg-white p-4 rounded-lg border border-gray-200 mb-4">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="mb-4 rounded-lg border border-gray-200 bg-white p-4">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Input
           v-model="searchQuery"
           :label="$t('common.search')"
@@ -10,34 +10,25 @@
         />
 
         <div>
-          <select
+          <FilterSelect
             v-model="statusFilter"
-            class="w-full text-[14px] h-10 px-3 py-2 pr-10 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            :options="statusOptions"
+            :placeholder="$t('orders.filters.allStatuses')"
             @change="applyFilters"
-          >
-            <option value="">{{ $t('orders.filters.allStatuses') }}</option>
-            <option value="new">{{ $t('orders.statuses.new') }}</option>
-            <option value="in_progress">{{ $t('orders.statuses.in_progress') }}</option>
-            <option value="completed">{{ $t('orders.statuses.completed') }}</option>
-            <option value="cancelled">{{ $t('orders.statuses.cancelled') }}</option>
-          </select>
+          />
         </div>
 
         <div v-if="canFilterByExecutor">
-          <select
+          <FilterSelect
             v-model="executorFilter"
+            :options="executorOptions"
+            :placeholder="$t('orders.filters.allExecutors')"
             :disabled="showScopeToggle && scopeFilter === 'mine'"
-            class="w-full text-[14px] h-10 px-3 py-2 pr-10 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
             @change="applyFilters"
-          >
-            <option value="">{{ $t('orders.filters.allExecutors') }}</option>
-            <option v-for="responsible in store.responsibleOptions" :key="responsible" :value="responsible">
-              {{ responsible }}
-            </option>
-          </select>
+          />
         </div>
 
-        <div class="flex items-end gap-2 flex-wrap" :class="canFilterByExecutor ? 'md:justify-end' : 'md:col-span-2'">
+        <div class="flex flex-wrap items-end gap-2" :class="canFilterByExecutor ? 'md:justify-end' : 'md:col-span-2'">
           <div
             v-if="showScopeToggle"
             class="relative flex h-10 items-center rounded-full border border-slate-200 bg-slate-100/90 p-1 shadow-sm"
@@ -84,8 +75,8 @@
       </div>
     </div>
 
-    <div v-if="store.isLoading" class="text-center py-8">
-      <div class="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    <div v-if="store.isLoading" class="py-8 text-center">
+      <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
       <p class="mt-2 text-gray-600">{{ $t('messages.loadingOrders') }}</p>
     </div>
 
@@ -111,13 +102,48 @@
       @prev-page="handlePrevPage"
       @row-click="handleRowClick"
     >
+      <template v-if="isAdmin" #header-select>
+        <div class="bulk-select-header flex w-full items-center justify-center" @click.stop>
+          <input
+            type="checkbox"
+            class="bulk-select-checkbox m-0 block h-4 w-4 rounded border-white/70 text-blue-600 focus:outline-none focus:ring-0 focus:border-white/70"
+            :checked="allVisibleOrdersSelected"
+            :aria-label="$t('common.deleteSelected')"
+            @change="toggleSelectAllOrders"
+          />
+        </div>
+      </template>
+
+      <template v-if="isAdmin" #cell-select="{ row }">
+        <div class="bulk-select-cell flex w-full items-center justify-center" @click.stop>
+          <input
+            type="checkbox"
+            class="bulk-select-checkbox m-0 block h-4 w-4 rounded border-gray-300 text-blue-600 focus:outline-none focus:ring-0 focus:border-gray-300"
+            :checked="selectedOrderIds.includes(row.id)"
+            @change="toggleOrderSelection(row.id)"
+          />
+        </div>
+      </template>
+
       <template #cell-id="{ row }">
-        <span class="font-semibold text-gray-900 text-[14px]">#{{ row.id }}</span>
+        <span class="text-[14px] font-semibold text-gray-900">#{{ row.id }}</span>
+      </template>
+
+      <template #cell-images="{ row }">
+        <div class="min-w-[4.5rem]" @click.stop>
+          <OrderImageGallery :images="row.images || []" compact />
+        </div>
       </template>
 
       <template #cell-executor="{ row }">
         <div class="min-w-[10rem]">
-          <p class="font-medium text-gray-900 text-[14px]">{{ row.responsible_name || row.user?.name || '—' }}</p>
+          <p class="text-[14px] font-medium text-gray-900">{{ row.responsible_name || row.user?.name || '—' }}</p>
+          <p
+            v-if="row.responsible_user?.real_name || row.responsibleUser?.real_name || (!row.responsible_name && row.user?.real_name)"
+            class="mt-0.5 text-xs text-gray-500"
+          >
+            {{ row.responsible_user?.real_name || row.responsibleUser?.real_name || row.user?.real_name }}
+          </p>
         </div>
       </template>
 
@@ -127,7 +153,7 @@
 
       <template #cell-description="{ row }">
         <div
-          class="min-w-[12.5rem] max-w-[19.5rem] overflow-hidden text-sm text-gray-700 leading-5"
+          class="min-w-[12.5rem] max-w-[19.5rem] overflow-hidden text-sm leading-5 text-gray-700"
           :title="row.description || '—'"
           style="display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical;"
         >
@@ -136,7 +162,7 @@
       </template>
 
       <template #cell-note="{ row }">
-        <div class="min-w-[18rem] max-w-[28rem] whitespace-pre-wrap break-words text-sm text-gray-600 leading-6">
+        <div class="min-w-[18rem] max-w-[28rem] whitespace-pre-wrap break-words text-sm leading-6 text-gray-600">
           {{ row.note || '—' }}
         </div>
       </template>
@@ -156,21 +182,15 @@
       </template>
 
       <template #cell-status="{ row }">
-        <div class="whitespace-nowrap min-w-max">
+        <div class="min-w-max whitespace-nowrap">
           <Badge :variant="getStatusVariant(row.status)">
             {{ formatStatus(row.status) }}
           </Badge>
         </div>
       </template>
 
-      <template #pagination-right-extra>
-        <Button @click="$emit('create')">
-          {{ $t('orders.newOrder') }}
-        </Button>
-      </template>
-
-      <template v-if="canViewFinancials" #pagination-left-extra>
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
+      <template #pagination-left-extra>
+        <div v-if="canViewFinancials" class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600">
           <p class="whitespace-nowrap">
             <span class="font-medium text-gray-700">{{ $t('orders.totals.orderCost') }}:</span>
             <span class="ml-1 font-semibold text-gray-900">{{ formatCurrency(store.filteredOrderCostTotal) }}</span>
@@ -179,6 +199,30 @@
             <span class="font-medium text-gray-700">{{ $t('orders.totals.packageCost') }}:</span>
             <span class="ml-1 font-semibold text-gray-900">{{ formatCurrency(store.filteredPackageCostTotal) }}</span>
           </p>
+        </div>
+      </template>
+
+      <template #pagination-right-extra>
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <span
+            v-if="hasSelectedOrders"
+            class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"
+          >
+            {{ $t('common.selectedCount', { count: selectedOrderIds.length }) }}
+          </span>
+
+          <Button
+            v-if="hasSelectedOrders"
+            variant="danger"
+            size="sm"
+            @click="emitBulkDelete"
+          >
+            {{ $t('common.deleteSelected') }}
+          </Button>
+
+          <Button @click="$emit('create')">
+            {{ $t('orders.newOrder') }}
+          </Button>
         </div>
       </template>
 
@@ -207,7 +251,6 @@
         </div>
       </template>
     </Table>
-
   </div>
 </template>
 
@@ -221,9 +264,11 @@ import { useFormattedDate } from '@/composables/useFormattedDate'
 import type { OrderPriority, OrderStatus } from '@/services/orderService'
 import Table from '@/components/ui/Table.vue'
 import Input from '@/components/ui/Input.vue'
+import FilterSelect from '@/components/ui/FilterSelect.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Alert from '@/components/ui/Alert.vue'
+import OrderImageGallery from '@/components/orders/OrderImageGallery.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -231,14 +276,40 @@ const store = useOrderStore()
 const authStore = useAuthStore()
 const { t } = useI18n()
 const { formatTableDate } = useFormattedDate()
+const emit = defineEmits<{
+  'view': [id: number]
+  'delete': [id: number]
+  'bulk-delete': [ids: number[]]
+  'create': []
+}>()
 
 const searchQuery = ref('')
 const statusFilter = ref('')
 const executorFilter = ref('')
 const scopeFilter = ref<'all' | 'mine'>('all')
+const selectedOrderIds = ref<number[]>([])
+
+const isAdmin = computed(() => authStore.isAdmin)
+const showScopeToggle = computed(() => authStore.isManager)
+const canFilterByExecutor = computed(() => true)
+const canViewFinancials = computed(() => !authStore.isWorker)
+const visibleOrderIds = computed(() => store.orders.map((order) => order.id))
+const hasSelectedOrders = computed(() => selectedOrderIds.value.length > 0)
+const allVisibleOrdersSelected = computed(() => (
+  visibleOrderIds.value.length > 0
+    && visibleOrderIds.value.every((id) => selectedOrderIds.value.includes(id))
+))
+const hasActiveFilters = computed(() => Boolean(
+  statusFilter.value
+  || searchQuery.value.trim()
+  || executorFilter.value
+  || (showScopeToggle.value && scopeFilter.value === 'mine')
+))
 
 const columns = computed(() => [
+  ...(isAdmin.value ? [{ key: 'select', label: '', reorderable: false }] : []),
   { key: 'id', label: t('orders.orderNumberShort'), sortable: true },
+  { key: 'images', label: t('orders.images') },
   { key: 'executor', label: t('orders.executor') },
   { key: 'created_at', label: t('orders.date'), sortable: true },
   { key: 'description', label: t('orders.formDescription') },
@@ -253,24 +324,32 @@ const columns = computed(() => [
   { key: 'status', label: t('orders.status'), sortable: true },
 ])
 
+const statusOptions = computed(() => [
+  { value: '', label: t('orders.filters.allStatuses') },
+  { value: 'new', label: t('orders.statuses.new') },
+  { value: 'in_progress', label: t('orders.statuses.in_progress') },
+  { value: 'completed', label: t('orders.statuses.completed') },
+  { value: 'cancelled', label: t('orders.statuses.cancelled') },
+])
+
+const executorOptions = computed(() => [
+  { value: '', label: t('orders.filters.allExecutors') },
+  ...store.responsibleOptions.map((responsible) => ({
+    value: responsible.value,
+    label: responsible.value,
+    description: responsible.real_name || undefined,
+  })),
+])
+
 const pagination = computed(() => ({
   currentPage: store.currentPage,
   totalPages: store.totalPages,
   total: store.total,
 }))
 
-const isAdmin = computed(() => authStore.isAdmin)
-const showScopeToggle = computed(() => authStore.isManager)
-const canFilterByExecutor = computed(() => true)
-const canViewFinancials = computed(() => !authStore.isWorker)
-const hasActiveFilters = computed(() => {
-  return Boolean(
-    statusFilter.value
-    || searchQuery.value.trim()
-    || executorFilter.value
-    || (showScopeToggle.value && scopeFilter.value === 'mine')
-  )
-})
+watch(visibleOrderIds, (ids) => {
+  selectedOrderIds.value = selectedOrderIds.value.filter((id) => ids.includes(id))
+}, { immediate: true })
 
 const getStatusVariant = (status: OrderStatus): 'info' | 'warning' | 'success' | 'danger' | 'default' => {
   const variants: Record<OrderStatus, 'info' | 'warning' | 'success' | 'danger'> = {
@@ -279,6 +358,7 @@ const getStatusVariant = (status: OrderStatus): 'info' | 'warning' | 'success' |
     completed: 'success',
     cancelled: 'danger',
   }
+
   return variants[status] || 'default'
 }
 
@@ -288,6 +368,7 @@ const getPriorityVariant = (priority: OrderPriority): 'info' | 'warning' | 'succ
     medium: 'warning',
     high: 'danger',
   }
+
   return variants[priority] || 'default'
 }
 
@@ -298,6 +379,7 @@ const formatStatus = (status: OrderStatus) => {
     completed: t('orders.statuses.completed'),
     cancelled: t('orders.statuses.cancelled'),
   }
+
   return formatted[status] || status
 }
 
@@ -307,6 +389,7 @@ const formatPriority = (priority: OrderPriority) => {
     medium: t('orders.priorities.medium'),
     high: t('orders.priorities.high'),
   }
+
   return formatted[priority] || priority
 }
 
@@ -328,8 +411,26 @@ const formatCurrency = (value: unknown) => {
   }).format(numericValue)
 }
 
-const handleRowClick = (row: any) => {
+const handleRowClick = (row: { id: number }) => {
   emit('view', row.id)
+}
+
+const toggleOrderSelection = (orderId: number) => {
+  selectedOrderIds.value = selectedOrderIds.value.includes(orderId)
+    ? selectedOrderIds.value.filter((id) => id !== orderId)
+    : [...selectedOrderIds.value, orderId]
+}
+
+const toggleSelectAllOrders = () => {
+  selectedOrderIds.value = allVisibleOrdersSelected.value ? [] : [...visibleOrderIds.value]
+}
+
+const emitBulkDelete = () => {
+  if (!hasSelectedOrders.value) {
+    return
+  }
+
+  emit('bulk-delete', [...selectedOrderIds.value])
 }
 
 const allowedStatuses: OrderStatus[] = ['new', 'in_progress', 'completed', 'cancelled']
@@ -393,6 +494,7 @@ const resetFilters = async () => {
   statusFilter.value = ''
   executorFilter.value = ''
   scopeFilter.value = 'all'
+  selectedOrderIds.value = []
   store.resetFilters()
   await router.replace({ query: {} })
 }
@@ -400,17 +502,17 @@ const resetFilters = async () => {
 const handleSort = (field: string) => {
   const newDirection = store.sortField === field && store.sortDirection === 'asc' ? 'desc' : 'asc'
   store.setSorting(field, newDirection)
-  loadOrders()
+  void loadOrders()
 }
 
 const handleNextPage = () => {
   store.goToPage(store.currentPage + 1)
-  loadOrders()
+  void loadOrders()
 }
 
 const handlePrevPage = () => {
   store.goToPage(store.currentPage - 1)
-  loadOrders()
+  void loadOrders()
 }
 
 const loadOrders = async () => {
@@ -423,12 +525,6 @@ watch(
     syncFiltersFromRoute()
     await loadOrders()
   },
-  { immediate: true }
+  { immediate: true },
 )
-
-const emit = defineEmits<{
-  'view': [id: number]
-  'delete': [id: number]
-  'create': []
-}>()
 </script>

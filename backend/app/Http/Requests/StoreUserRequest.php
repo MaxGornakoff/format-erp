@@ -23,6 +23,7 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            'real_name' => 'nullable|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|regex:/[A-Za-z]/ |regex:/[0-9]/',
             'role' => 'required|in:worker,manager,admin',

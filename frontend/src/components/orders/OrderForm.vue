@@ -1,7 +1,7 @@
 <template>
   <form @submit.prevent="handleSubmit" class="space-y-4">
     <div class="mb-4">
-      <label class="block text-sm font-medium text-gray-700 mb-1">
+      <label class="mb-1 block text-sm font-medium text-gray-700">
         {{ $t('orders.executor') }}
         <span class="text-red-500">*</span>
       </label>
@@ -10,9 +10,15 @@
         <input
           v-model.trim="responsibleName"
           type="text"
+          name="responsible_lookup"
+          autocomplete="new-password"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          data-lpignore="true"
           :placeholder="isLoadingManagers ? $t('common.loading') : $t('orders.selectExecutor')"
           :class="[
-            'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+            'w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
             errors.responsible_name ? 'border-red-500' : 'border-gray-300'
           ]"
           @focus="openResponsibleSuggestions"
@@ -32,7 +38,7 @@
             @mousedown.prevent="selectResponsible(manager)"
           >
             <span class="text-sm font-medium text-gray-900">{{ manager.name }}</span>
-            <span v-if="manager.email" class="text-xs text-gray-500">{{ manager.email }}</span>
+            <span v-if="manager.real_name" class="text-xs text-gray-500">{{ manager.real_name }}</span>
           </button>
         </div>
       </div>
@@ -44,7 +50,7 @@
     </div>
 
     <div class="mb-4">
-      <label class="block text-sm font-medium text-gray-700 mb-1">
+      <label class="mb-1 block text-sm font-medium text-gray-700">
         {{ $t('orders.formDescription') }}
         <span class="text-red-500">*</span>
       </label>
@@ -53,7 +59,7 @@
         :placeholder="$t('orders.formDescriptionPlaceholder')"
         rows="4"
         :class="[
-          'w-full px-3 py-2 border rounded-lg transition-colors duration-200',
+          'w-full rounded-lg border px-3 py-2 transition-colors duration-200',
           errors.description ? 'border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500' : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
         ]"
       />
@@ -61,20 +67,144 @@
     </div>
 
     <div class="mb-4">
-      <label class="block text-sm font-medium text-gray-700 mb-1">
+      <label class="mb-1 block text-sm font-medium text-gray-700">
         {{ $t('orders.note') }}
       </label>
       <textarea
         v-model="form.note"
         :placeholder="$t('orders.notePlaceholder')"
         rows="3"
-        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
     </div>
 
-    <div v-if="canManageFinancials" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+      <div
+        class="rounded-xl border-2 border-dashed p-4 text-center transition-colors"
+        :class="isDraggingImages ? 'border-blue-400 bg-blue-50' : 'border-slate-300 bg-white/80'"
+        @dragenter.prevent="isDraggingImages = true"
+        @dragover.prevent="isDraggingImages = true"
+        @dragleave.prevent="isDraggingImages = false"
+        @drop="handleImageDrop"
+      >
+        <p class="text-sm font-semibold text-slate-900">
+          {{ isDraggingImages ? $t('orders.dragDropActive') : $t('orders.dragDropTitle') }}
+        </p>
+        <p class="mt-1 text-xs text-slate-500">
+          {{ $t('orders.dragDropSubtitle') }}
+        </p>
+
+        <div class="mt-3 flex flex-wrap items-center justify-center gap-3">
+          <label class="inline-flex cursor-pointer items-center rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-50">
+            <input
+              type="file"
+              multiple
+              :accept="ORDER_IMAGE_ACCEPT_ATTRIBUTE"
+              class="hidden"
+              @change="handleImageSelection"
+            />
+            {{ $t('orders.addImages') }}
+          </label>
+
+          <span class="text-xs text-slate-500">
+            {{ totalSelectedImages }} / {{ ORDER_IMAGE_MAX_FILES }}
+          </span>
+        </div>
+      </div>
+
+      <p class="mt-3 text-xs text-slate-500">
+        {{ $t('orders.imageRules', { size: ORDER_IMAGE_MAX_SIZE_MB, count: ORDER_IMAGE_MAX_FILES }) }}
+      </p>
+      <p v-if="imageError" class="mt-2 text-sm text-red-500">{{ imageError }}</p>
+
+      <div v-if="existingImages.length || newImagePreviews.length" class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
+        <div
+          v-for="(image, index) in existingImages"
+          :key="`existing-${image.id}`"
+          class="group relative overflow-hidden rounded-xl border border-slate-200 bg-white"
+        >
+          <img
+            :src="image.thumbnail_url || image.url"
+            :alt="image.original_name || $t('orders.image')"
+            class="aspect-[4/3] w-full object-cover"
+          />
+          <label
+            class="absolute right-2 top-2 inline-flex items-center justify-center rounded-md bg-white/95 p-1 shadow-sm"
+            :title="preferredCoverSource === 'existing' && index === 0 ? $t('orders.cover') : $t('orders.makeCover')"
+            @click.stop
+          >
+            <input
+              type="checkbox"
+              class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:outline-none focus:ring-0"
+              :checked="preferredCoverSource === 'existing' && index === 0"
+              :aria-label="preferredCoverSource === 'existing' && index === 0 ? $t('orders.cover') : $t('orders.makeCover')"
+              @change="makeExistingImageCover(image.id)"
+            />
+          </label>
+          <div class="flex items-center justify-between p-2">
+            <span class="text-[11px] text-slate-500">{{ $t('orders.savedImage') }}</span>
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+              :title="$t('orders.deleteImage')"
+              :aria-label="$t('orders.deleteImage')"
+              @click="markExistingImageForRemoval(image.id)"
+            >
+              <svg viewBox="0 0 20 20" fill="none" class="h-4 w-4" aria-hidden="true">
+                <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div
+          v-for="(preview, index) in newImagePreviews"
+          :key="`${preview.file.name}-${preview.url}`"
+          class="group relative overflow-hidden rounded-xl border border-blue-200 bg-white"
+        >
+          <img
+            :src="preview.url"
+            :alt="preview.file.name"
+            class="aspect-[4/3] w-full object-cover"
+          />
+          <label
+            class="absolute right-2 top-2 inline-flex items-center justify-center rounded-md bg-white/95 p-1 shadow-sm"
+            :title="preferredCoverSource === 'new' && index === 0 ? $t('orders.cover') : $t('orders.makeCover')"
+            @click.stop
+          >
+            <input
+              type="checkbox"
+              class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:outline-none focus:ring-0"
+              :checked="preferredCoverSource === 'new' && index === 0"
+              :aria-label="preferredCoverSource === 'new' && index === 0 ? $t('orders.cover') : $t('orders.makeCover')"
+              @change="makePendingImageCover(index)"
+            />
+          </label>
+          <div class="flex items-center justify-between p-2">
+            <span class="text-[11px] text-blue-600">{{ $t('orders.newImage') }}</span>
+            <button
+              type="button"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+              :title="$t('orders.deleteImage')"
+              :aria-label="$t('orders.deleteImage')"
+              @click="removePendingImage(index)"
+            >
+              <svg viewBox="0 0 20 20" fill="none" class="h-4 w-4" aria-hidden="true">
+                <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="mt-4 rounded-lg border border-dashed border-slate-300 bg-white/80 px-4 py-5 text-sm text-slate-500">
+        {{ $t('orders.noImages') }}
+      </div>
+    </div>
+
+    <div v-if="canManageFinancials" class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label class="mb-1 block text-sm font-medium text-gray-700">
           {{ $t('orders.packageCost') }}
         </label>
         <input
@@ -84,7 +214,7 @@
           step="0.01"
           :placeholder="$t('orders.packageCostPlaceholder')"
           :class="[
-            'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+            'w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
             errors.package_cost ? 'border-red-500' : 'border-gray-300'
           ]"
         />
@@ -92,7 +222,7 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label class="mb-1 block text-sm font-medium text-gray-700">
           {{ $t('orders.orderCost') }}
         </label>
         <input
@@ -102,7 +232,7 @@
           step="0.01"
           :placeholder="$t('orders.orderCostPlaceholder')"
           :class="[
-            'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+            'w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
             errors.order_cost ? 'border-red-500' : 'border-gray-300'
           ]"
         />
@@ -110,15 +240,15 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label class="mb-1 block text-sm font-medium text-gray-700">
           {{ $t('orders.priority') }}
           <span class="text-red-500">*</span>
         </label>
         <select
           v-model="form.priority"
-          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="low">{{ $t('orders.priorities.low') }}</option>
           <option value="medium">{{ $t('orders.priorities.medium') }}</option>
@@ -127,13 +257,13 @@
       </div>
 
       <div v-if="isEdit">
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label class="mb-1 block text-sm font-medium text-gray-700">
           {{ $t('orders.status') }}
         </label>
         <select
           v-model="form.status"
           :class="[
-            'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+            'w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
             errors.status ? 'border-red-500' : 'border-gray-300'
           ]"
         >
@@ -154,7 +284,7 @@
       @close="generalError = ''"
     />
 
-    <div class="flex gap-2 justify-end pt-4 border-t border-gray-200">
+    <div class="flex justify-end gap-2 border-t border-gray-200 pt-4">
       <Button
         variant="secondary"
         type="button"
@@ -171,12 +301,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useOrderStore } from '@/stores/orderStore'
 import { useAuthStore } from '@/stores/authStore'
 import userService from '@/services/userService'
-import type { Order, OrderPriority } from '@/services/orderService'
+import {
+  ORDER_IMAGE_ACCEPT_ATTRIBUTE,
+  ORDER_IMAGE_ALLOWED_MIME_TYPES,
+  ORDER_IMAGE_MAX_FILES,
+  ORDER_IMAGE_MAX_SIZE_BYTES,
+  ORDER_IMAGE_MAX_SIZE_MB,
+} from '@/services/orderService'
+import type { Order, OrderImage, OrderPriority } from '@/services/orderService'
 import Button from '@/components/ui/Button.vue'
 import Alert from '@/components/ui/Alert.vue'
 
@@ -190,19 +327,27 @@ interface Props {
     priority?: OrderPriority
     status?: Order['status']
     responsible_name?: string
+    images?: OrderImage[]
   }
 }
 
 interface ManagerOption {
   id: number
   name: string
-  email: string
+  real_name?: string | null
 }
+
+interface PendingImagePreview {
+  file: File
+  url: string
+}
+
+type CoverSource = 'existing' | 'new' | null
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
-  'cancel': []
-  'success': []
+  cancel: []
+  success: []
 }>()
 
 const store = useOrderStore()
@@ -215,6 +360,12 @@ const managers = ref<ManagerOption[]>([])
 const isLoadingManagers = ref(false)
 const responsibleName = ref(authStore.user?.name ?? '')
 const showResponsibleSuggestions = ref(false)
+const existingImages = ref<OrderImage[]>([])
+const deletedImageIds = ref<number[]>([])
+const newImagePreviews = ref<PendingImagePreview[]>([])
+const imageError = ref('')
+const isDraggingImages = ref(false)
+const preferredCoverSource = ref<CoverSource>(null)
 let responsibleSuggestionsTimeout: ReturnType<typeof setTimeout> | null = null
 
 const filteredManagers = computed(() => {
@@ -238,11 +389,13 @@ const filteredManagers = computed(() => {
 
   const matches = sortedManagers.filter((manager) => {
     return manager.name.toLowerCase().includes(query)
-      || manager.email.toLowerCase().includes(query)
+      || (manager.real_name ?? '').toLowerCase().includes(query)
   })
 
   return matches.length > 0 ? matches : sortedManagers
 })
+
+const totalSelectedImages = computed(() => existingImages.value.length + newImagePreviews.value.length)
 
 const form = ref<{
   description: string
@@ -264,6 +417,11 @@ const errors = ref<Record<string, string>>({})
 const generalError = ref('')
 const isSubmitting = ref(false)
 
+const resetPendingImages = () => {
+  newImagePreviews.value.forEach((preview) => URL.revokeObjectURL(preview.url))
+  newImagePreviews.value = []
+}
+
 const getDefaultResponsibleName = () => {
   if (props.initialData?.responsible_name?.trim()) {
     return props.initialData.responsible_name.trim()
@@ -273,11 +431,22 @@ const getDefaultResponsibleName = () => {
 }
 
 const syncForm = () => {
+  resetPendingImages()
+  deletedImageIds.value = []
+  imageError.value = ''
+  isDraggingImages.value = false
+  existingImages.value = [...(props.initialData?.images ?? [])]
+  preferredCoverSource.value = existingImages.value.length > 0 ? 'existing' : null
+
   form.value = {
     description: props.initialData?.description || '',
     note: props.initialData?.note || '',
-    package_cost: props.initialData?.package_cost ?? null,
-    order_cost: props.initialData?.order_cost ?? null,
+    package_cost: props.initialData?.package_cost !== null && props.initialData?.package_cost !== undefined
+      ? Number(props.initialData.package_cost)
+      : null,
+    order_cost: props.initialData?.order_cost !== null && props.initialData?.order_cost !== undefined
+      ? Number(props.initialData.order_cost)
+      : null,
     priority: props.initialData?.priority || 'medium',
     status: props.initialData?.status || 'new',
   }
@@ -296,7 +465,7 @@ watch(
 
     responsibleName.value = userName
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 const toNullableNumber = (value: number | null | '' | undefined) => {
@@ -312,7 +481,13 @@ const loadManagers = async () => {
   isLoadingManagers.value = true
   try {
     const response = await userService.getUsers(1, 100, 'manager')
-    managers.value = [...response.data].sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+    managers.value = response.data
+      .map((manager) => ({
+        id: manager.id,
+        name: manager.name,
+        real_name: manager.real_name,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
   } catch (err) {
     console.error('Failed to load managers:', err)
     managers.value = []
@@ -341,6 +516,116 @@ const selectResponsible = (manager: ManagerOption) => {
   showResponsibleSuggestions.value = false
 }
 
+const processSelectedFiles = (selectedFiles: File[]) => {
+  const remainingSlots = ORDER_IMAGE_MAX_FILES - totalSelectedImages.value
+
+  imageError.value = ''
+
+  if (remainingSlots <= 0) {
+    imageError.value = t('orders.imageLimitReached', { count: ORDER_IMAGE_MAX_FILES })
+    return
+  }
+
+  const acceptedFiles: PendingImagePreview[] = []
+
+  for (const file of selectedFiles) {
+    if (!ORDER_IMAGE_ALLOWED_MIME_TYPES.includes(file.type as typeof ORDER_IMAGE_ALLOWED_MIME_TYPES[number])) {
+      imageError.value = t('orders.invalidImageFormat')
+      continue
+    }
+
+    if (file.size > ORDER_IMAGE_MAX_SIZE_BYTES) {
+      imageError.value = t('orders.imageTooLarge', { size: ORDER_IMAGE_MAX_SIZE_MB })
+      continue
+    }
+
+    if ((acceptedFiles.length + totalSelectedImages.value) >= ORDER_IMAGE_MAX_FILES) {
+      imageError.value = t('orders.imageLimitReached', { count: ORDER_IMAGE_MAX_FILES })
+      break
+    }
+
+    acceptedFiles.push({
+      file,
+      url: URL.createObjectURL(file),
+    })
+  }
+
+  if (acceptedFiles.length > 0) {
+    newImagePreviews.value = [...newImagePreviews.value, ...acceptedFiles]
+
+    if (!preferredCoverSource.value) {
+      preferredCoverSource.value = 'new'
+    }
+  }
+}
+
+const handleImageSelection = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  processSelectedFiles(Array.from(input.files || []))
+  input.value = ''
+}
+
+const handleImageDrop = (event: DragEvent) => {
+  event.preventDefault()
+  isDraggingImages.value = false
+  processSelectedFiles(Array.from(event.dataTransfer?.files || []))
+}
+
+const removePendingImage = (index: number) => {
+  const [removed] = newImagePreviews.value.splice(index, 1)
+  if (removed) {
+    URL.revokeObjectURL(removed.url)
+  }
+
+  if (newImagePreviews.value.length === 0 && preferredCoverSource.value === 'new') {
+    preferredCoverSource.value = existingImages.value.length > 0 ? 'existing' : null
+  }
+
+  imageError.value = ''
+}
+
+const makePendingImageCover = (index: number) => {
+  if (index <= 0 && preferredCoverSource.value === 'new') {
+    return
+  }
+
+  const [selectedPreview] = newImagePreviews.value.splice(index, 1)
+
+  if (selectedPreview) {
+    newImagePreviews.value.unshift(selectedPreview)
+    preferredCoverSource.value = 'new'
+  }
+}
+
+const makeExistingImageCover = (imageId: number) => {
+  const selectedIndex = existingImages.value.findIndex((image) => image.id === imageId)
+
+  if (selectedIndex === -1) {
+    return
+  }
+
+  const [selectedImage] = existingImages.value.splice(selectedIndex, 1)
+
+  if (selectedImage) {
+    existingImages.value.unshift(selectedImage)
+    preferredCoverSource.value = 'existing'
+  }
+}
+
+const markExistingImageForRemoval = (imageId: number) => {
+  if (!deletedImageIds.value.includes(imageId)) {
+    deletedImageIds.value.push(imageId)
+  }
+
+  existingImages.value = existingImages.value.filter((image) => image.id !== imageId)
+
+  if (existingImages.value.length === 0 && preferredCoverSource.value === 'existing') {
+    preferredCoverSource.value = newImagePreviews.value.length > 0 ? 'new' : null
+  }
+
+  imageError.value = ''
+}
+
 const validateForm = () => {
   errors.value = {}
 
@@ -363,7 +648,11 @@ const validateForm = () => {
     errors.value.order_cost = t('validation.nonNegativeNumber')
   }
 
-  return Object.keys(errors.value).length === 0
+  if (totalSelectedImages.value > ORDER_IMAGE_MAX_FILES) {
+    imageError.value = t('orders.imageLimitReached', { count: ORDER_IMAGE_MAX_FILES })
+  }
+
+  return Object.keys(errors.value).length === 0 && !imageError.value
 }
 
 const handleSubmit = async () => {
@@ -381,6 +670,14 @@ const handleSubmit = async () => {
     order_cost: canManageFinancials.value ? toNullableNumber(form.value.order_cost) : undefined,
     priority: form.value.priority,
     responsible_name: responsibleName.value.trim(),
+    images: newImagePreviews.value.length ? newImagePreviews.value.map((preview) => preview.file) : undefined,
+    deleted_image_ids: deletedImageIds.value.length ? [...deletedImageIds.value] : undefined,
+    cover_image_id: preferredCoverSource.value === 'existing' && existingImages.value[0]
+      ? existingImages.value[0].id
+      : undefined,
+    cover_upload_index: preferredCoverSource.value === 'new' && newImagePreviews.value.length > 0
+      ? 0
+      : undefined,
   }
 
   try {
@@ -408,6 +705,10 @@ const handleSubmit = async () => {
 
 onMounted(() => {
   loadManagers()
+})
+
+onBeforeUnmount(() => {
+  resetPendingImages()
 })
 </script>
 

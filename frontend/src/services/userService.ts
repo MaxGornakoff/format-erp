@@ -3,6 +3,7 @@ import api from './api'
 export interface User {
   id: number
   name: string
+  real_name?: string | null
   email: string
   role: 'worker' | 'manager' | 'admin'
   is_tracked: boolean
@@ -12,6 +13,7 @@ export interface User {
 
 export interface CreateUserPayload {
   name: string
+  real_name?: string | null
   email: string
   password: string
   role: 'worker' | 'manager' | 'admin'
@@ -20,6 +22,7 @@ export interface CreateUserPayload {
 
 export interface UpdateUserPayload {
   name?: string
+  real_name?: string | null
   email?: string
   role?: 'worker' | 'manager' | 'admin'
   is_tracked?: boolean
@@ -33,6 +36,16 @@ export interface UsersResponse {
   total: number
   per_page: number
   last_page: number
+}
+
+export const PRIMARY_ADMIN_EMAIL = 'admin@example.com'
+
+export const isPrimaryAdminUser = (user?: Pick<User, 'email' | 'role'> | null): boolean => {
+  if (!user) {
+    return false
+  }
+
+  return user.role === 'admin' && user.email.trim().toLowerCase() === PRIMARY_ADMIN_EMAIL
 }
 
 const userService = {

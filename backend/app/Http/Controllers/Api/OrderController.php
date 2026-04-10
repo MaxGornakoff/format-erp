@@ -8,12 +8,20 @@ use App\Http\Requests\UpdateOrderRequest;
 use App\Models\Order;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\OrderImageOptimizer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
+    public function __construct(private readonly OrderImageOptimizer $orderImageOptimizer)
+    {
+    }
+
+    private const MAX_ORDER_IMAGES = 10;
+
     /**
      * Display a listing of the resource.
      */
@@ -131,24 +139,40 @@ class OrderController extends Controller
         $generatedTitle = trim((string) ($data['title'] ?? ''));
 
         if ($generatedTitle === '') {
-            $generatedTitle = Str::limit(trim($data['description']), 80, '');
+            $generatedTitle = Str::limit(trim((string) $data['description']), 80, '');
         }
 
         if ($generatedTitle === '') {
             $generatedTitle = 'Order ' . now()->format('YmdHis');
         }
 
-        $order = Order::create([
-            'title' => $generatedTitle,
-            'description' => $data['description'],
-            'note' => $data['note'] ?? null,
-            'package_cost' => $data['package_cost'] ?? null,
-            'order_cost' => $data['order_cost'] ?? null,
-            'priority' => $data['priority'] ?? 'medium',
-            'status' => 'new',
-            'user_id' => $currentUser->id,
-            'responsible_name' => $responsibleName,
-        ]);
+        $coverUploadIndex = array_key_exists('cover_upload_index', $data)
+            ? (int) $data['cover_upload_index']
+            : null;
+
+        unset($data['images'], $data['deleted_image_ids'], $data['cover_image_id'], $data['cover_upload_index']);
+
+        $order = DB::transaction(function () use ($data, $currentUser, $generatedTitle, $request, $responsibleName, $coverUploadIndex) {
+            $order = Order::create([
+                'title' => $generatedTitle,
+                'description' => $data['description'],
+                'note' => $data['note'] ?? null,
+                'package_cost' => $data['package_cost'] ?? null,
+                'order_cost' => $data['order_cost'] ?? null,
+                'priority' => $data['priority'] ?? 'medium',
+                'status' => 'new',
+                'user_id' => $currentUser->id,
+                'responsible_name' => $responsibleName,
+            ]);
+
+            $createdImageIds = $this->storeUploadedImages($request, $order);
+
+            if ($coverUploadIndex !== null && isset($createdImageIds[$coverUploadIndex])) {
+                $this->setCoverImage($order, (int) $createdImageIds[$coverUploadIndex]);
+            }
+
+            return $order;
+        });
 
         ActivityLogger::log(
             $currentUser,
@@ -159,10 +183,11 @@ class OrderController extends Controller
             'Created a new order',
             [
                 'responsible_name' => $responsibleName,
+                'images_count' => $order->images()->count(),
             ],
         );
 
-        return response()->json($order->load('user:id,name,email,role'), 201);
+        return response()->json($order->fresh()->load($this->orderRelations()), 201);
     }
 
     /**
@@ -181,7 +206,7 @@ class OrderController extends Controller
             'Viewed an order',
         );
 
-        return response()->json($order->load('user:id,name,email,role'));
+        return response()->json($order->load($this->orderRelations()));
     }
 
     /**
@@ -193,8 +218,19 @@ class OrderController extends Controller
 
         $data = $request->validated();
         $currentUser = $request->user();
+        $deletedImageIds = collect($data['deleted_image_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
+        $coverImageId = array_key_exists('cover_image_id', $data) && $data['cover_image_id'] !== null
+            ? (int) $data['cover_image_id']
+            : null;
+        $coverUploadIndex = array_key_exists('cover_upload_index', $data) && $data['cover_upload_index'] !== null
+            ? (int) $data['cover_upload_index']
+            : null;
 
-        unset($data['user_id']);
+        unset($data['user_id'], $data['images'], $data['deleted_image_ids'], $data['cover_image_id'], $data['cover_upload_index']);
 
         if (! in_array($currentUser->role, ['manager', 'admin'], true)) {
             unset($data['package_cost'], $data['order_cost']);
@@ -214,7 +250,36 @@ class OrderController extends Controller
             $data['title'] = Str::limit(trim((string) $data['description']), 80, '');
         }
 
-        $order->update($data);
+        $this->ensureImageLimit($request, $order, $deletedImageIds);
+
+        DB::transaction(function () use ($data, $deletedImageIds, $order, $request, $coverImageId, $coverUploadIndex) {
+            if (! empty($data)) {
+                $order->update($data);
+            }
+
+            $this->deleteSelectedImages($order, $deletedImageIds);
+            $createdImageIds = $this->storeUploadedImages($request, $order);
+
+            if ($coverUploadIndex !== null && isset($createdImageIds[$coverUploadIndex])) {
+                $this->setCoverImage($order, (int) $createdImageIds[$coverUploadIndex]);
+            } elseif ($coverImageId !== null) {
+                $this->setCoverImage($order, $coverImageId);
+            }
+        });
+
+        $changedFields = array_values(array_keys($data));
+
+        if (! empty($deletedImageIds)) {
+            $changedFields[] = 'deleted_image_ids';
+        }
+
+        if ($request->hasFile('images')) {
+            $changedFields[] = 'images';
+        }
+
+        if ($coverImageId !== null || $coverUploadIndex !== null) {
+            $changedFields[] = 'cover_image';
+        }
 
         ActivityLogger::log(
             $currentUser,
@@ -224,11 +289,11 @@ class OrderController extends Controller
             $order->id,
             'Updated an order',
             [
-                'changed_fields' => array_values(array_keys($data)),
+                'changed_fields' => array_values(array_unique($changedFields)),
             ],
         );
 
-        return response()->json($order->load('user:id,name,email,role'));
+        return response()->json($order->fresh()->load($this->orderRelations()));
     }
 
     /**
@@ -254,7 +319,7 @@ class OrderController extends Controller
 
     private function buildFilteredQuery(Request $request)
     {
-        $query = Order::with(['user:id,name,email,role']);
+        $query = Order::with($this->orderRelations());
         $user = $request->user();
 
         if ($request->status) {
@@ -313,18 +378,137 @@ class OrderController extends Controller
         return $query;
     }
 
+    private function orderRelations(): array
+    {
+        return [
+            'user:id,name,email,role,real_name',
+            'responsibleUser:id,name,email,role,real_name',
+            'images',
+        ];
+    }
+
+    private function ensureImageLimit(Request $request, Order $order, array $deletedImageIds = []): void
+    {
+        $uploadedImages = $request->file('images', []);
+        $uploadedCount = is_array($uploadedImages) ? count($uploadedImages) : 0;
+        $existingCount = $order->images()->count();
+        $deletedCount = empty($deletedImageIds)
+            ? 0
+            : $order->images()->whereIn('id', $deletedImageIds)->count();
+
+        if (($existingCount - $deletedCount + $uploadedCount) > self::MAX_ORDER_IMAGES) {
+            throw ValidationException::withMessages([
+                'images' => 'You can attach up to 10 images to one order.',
+            ]);
+        }
+    }
+
+    private function deleteSelectedImages(Order $order, array $deletedImageIds = []): void
+    {
+        if (empty($deletedImageIds)) {
+            return;
+        }
+
+        $order->images()
+            ->whereIn('id', $deletedImageIds)
+            ->get()
+            ->each
+            ->delete();
+    }
+
+    private function storeUploadedImages(Request $request, Order $order): array
+    {
+        $uploadedImages = $request->file('images', []);
+
+        if (! is_array($uploadedImages) || empty($uploadedImages)) {
+            return [];
+        }
+
+        $sortOrder = (int) $order->images()->max('sort_order');
+        $createdImageIds = [];
+
+        foreach ($uploadedImages as $uploadedImage) {
+            if (! $uploadedImage) {
+                continue;
+            }
+
+            $sortOrder++;
+            $path = $uploadedImage->store("orders/{$order->id}", 'public');
+            $thumbnailPath = $this->orderImageOptimizer->createThumbnail($uploadedImage, $order->id, 'public');
+
+            $image = $order->images()->create([
+                'disk' => 'public',
+                'path' => $path,
+                'thumbnail_path' => $thumbnailPath,
+                'original_name' => $uploadedImage->getClientOriginalName(),
+                'mime_type' => $uploadedImage->getClientMimeType(),
+                'size' => $uploadedImage->getSize() ?: 0,
+                'sort_order' => $sortOrder,
+            ]);
+
+            $createdImageIds[] = $image->id;
+        }
+
+        return $createdImageIds;
+    }
+
+    private function setCoverImage(Order $order, int $coverImageId): void
+    {
+        $imageIds = $order->images()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if (! in_array($coverImageId, $imageIds, true)) {
+            throw ValidationException::withMessages([
+                'cover_image_id' => 'The selected cover image does not belong to this order.',
+            ]);
+        }
+
+        $orderedIds = array_values(array_unique(array_merge([$coverImageId], array_diff($imageIds, [$coverImageId]))));
+
+        foreach ($orderedIds as $index => $imageId) {
+            $order->images()->whereKey($imageId)->update([
+                'sort_order' => $index + 1,
+            ]);
+        }
+    }
+
     private function getResponsibleSuggestions(Request $request): array
     {
-        $query = Order::query();
-
-        return $query
+        $names = Order::query()
             ->whereNotNull('responsible_name')
             ->where('responsible_name', '!=', '')
             ->distinct()
             ->orderBy('responsible_name')
             ->pluck('responsible_name')
             ->filter(fn ($name) => is_string($name) && trim($name) !== '')
-            ->values()
+            ->values();
+
+        if ($names->isEmpty()) {
+            return [];
+        }
+
+        $usersByName = User::query()
+            ->whereIn('name', $names->all())
+            ->get(['name', 'real_name'])
+            ->keyBy(fn (User $user) => mb_strtolower(trim((string) $user->name)));
+
+        return $names
+            ->map(function (string $name) use ($usersByName) {
+                $normalizedName = mb_strtolower(trim($name));
+                /** @var User|null $matchedUser */
+                $matchedUser = $usersByName->get($normalizedName);
+                $realName = trim((string) ($matchedUser?->real_name ?? ''));
+
+                return [
+                    'value' => $name,
+                    'label' => $realName !== '' ? sprintf('%s — %s', $name, $realName) : $name,
+                    'real_name' => $realName !== '' ? $realName : null,
+                ];
+            })
             ->all();
     }
 

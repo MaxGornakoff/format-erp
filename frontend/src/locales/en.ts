@@ -25,7 +25,10 @@ export const en = {
     next: 'Next',
     actions: 'Actions',
     resetColumns: 'Reset column order',
-    resetFilters: 'Reset filters'
+    resetFilters: 'Reset filters',
+    selectPage: 'Select page',
+    deleteSelected: 'Delete selected',
+    selectedCount: 'Selected: {count}'
   },
 
   auth: {
@@ -113,12 +116,31 @@ export const en = {
     viewOrder: 'View',
     deleteOrder: 'Delete',
     confirmDelete: 'Are you sure you want to delete this order?',
+    confirmBulkDelete: 'Are you sure you want to delete the selected orders? Count: {count}',
     status: 'Status',
     changeStatus: 'Change Status',
     totals: {
       orderCost: 'Total order amount',
       packageCost: 'Total layout amount'
     },
+    images: 'Images',
+    image: 'Image',
+    addImages: 'Add images',
+    uploadImages: 'Upload images',
+    clearSelectedImages: 'Clear selected',
+    noImages: 'No images attached yet',
+    deleteImage: 'Delete image',
+    savedImage: 'Saved',
+    newImage: 'New',
+    imageRules: 'JPG, PNG, or WEBP up to {size} MB each, maximum {count} files.',
+    imageLimitReached: 'You can attach up to {count} images to one order.',
+    invalidImageFormat: 'Only JPG, PNG, and WEBP are supported.',
+    imageTooLarge: 'Each image must be no larger than {size} MB.',
+    dragDropTitle: 'Drop images here',
+    dragDropSubtitle: 'or click to choose files from your device',
+    dragDropActive: 'Release the files to attach them to the order',
+    makeCover: 'Set as cover',
+    cover: 'Cover',
 
     priorities: {
       low: 'Low',
@@ -146,16 +168,22 @@ export const en = {
     newUser: '+ New User',
     createUser: 'Create User',
     editUser: 'Edit User',
+    userDetails: 'User Details',
     id: 'ID',
     name: 'Name',
     email: 'Email',
     role: 'Role',
+    realName: 'Real name',
+    realNamePlaceholder: 'For example: John Smith',
     tracking: 'Tracking',
     trackActivity: 'Track user activity',
     tracked: 'Tracked',
     notTracked: 'Not tracked',
     created: 'Created',
+    updatedAt: 'Updated At',
     confirmDelete: 'Are you sure you want to delete this user?',
+    confirmBulkDelete: 'Are you sure you want to delete the selected users? Count: {count}',
+    primaryAdminProtected: 'The primary administrator is protected from deletion',
     
     roles: {
       worker: 'Worker',
@@ -247,7 +275,9 @@ export const en = {
     failedToExportOrders: 'Failed to export orders',
     failedToSaveUser: 'Failed to save user',
     failedToDeleteUser: 'Failed to delete user',
+    failedToLoadUser: 'Failed to load user',
     failedToLoadHistory: 'Failed to load activity history',
-    orderNotFound: 'Order not found'
+    orderNotFound: 'Order not found',
+    userNotFound: 'User not found'
   }
 }

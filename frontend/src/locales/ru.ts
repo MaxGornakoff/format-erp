@@ -25,7 +25,10 @@ export const ru = {
     next: 'Следующая',
     actions: 'Действия',
     resetColumns: 'Сбросить порядок колонок',
-    resetFilters: 'Сбросить фильтры'
+    resetFilters: 'Сбросить фильтры',
+    selectPage: 'Выбрать страницу',
+    deleteSelected: 'Удалить выбранное',
+    selectedCount: 'Выбрано: {count}'
   },
 
   auth: {
@@ -113,12 +116,31 @@ export const ru = {
     viewOrder: 'Просмотр',
     deleteOrder: 'Удалить',
     confirmDelete: 'Вы уверены, что хотите удалить этот заказ?',
+    confirmBulkDelete: 'Вы уверены, что хотите удалить выбранные заказы? Количество: {count}',
     status: 'Статус',
     changeStatus: 'Изменить статус',
     totals: {
       orderCost: 'Сумма заказов',
       packageCost: 'Сумма макетов'
     },
+    images: 'Изображения',
+    image: 'Изображение',
+    addImages: 'Добавить изображения',
+    uploadImages: 'Загрузить изображения',
+    clearSelectedImages: 'Очистить выбранное',
+    noImages: 'Изображения пока не добавлены',
+    deleteImage: 'Удалить изображение',
+    savedImage: 'Сохранено',
+    newImage: 'Новое',
+    imageRules: 'JPG, PNG или WEBP до {size} МБ каждое, максимум {count} файлов.',
+    imageLimitReached: 'Можно прикрепить не более {count} изображений к одному заказу.',
+    invalidImageFormat: 'Поддерживаются только JPG, PNG и WEBP.',
+    imageTooLarge: 'Одно изображение не должно превышать {size} МБ.',
+    dragDropTitle: 'Перетащите изображения сюда',
+    dragDropSubtitle: 'или нажмите, чтобы выбрать файлы с устройства',
+    dragDropActive: 'Отпустите файлы, чтобы добавить их к заказу',
+    makeCover: 'Сделать обложкой',
+    cover: 'Обложка',
 
     priorities: {
       low: 'Низкая',
@@ -146,16 +168,22 @@ export const ru = {
     newUser: '+ Новый пользователь',
     createUser: 'Создать пользователя',
     editUser: 'Редактировать пользователя',
+    userDetails: 'Карточка пользователя',
     id: 'ID',
     name: 'Имя',
     email: 'Email',
     role: 'Роль',
+    realName: 'Реальное имя',
+    realNamePlaceholder: 'Например: Иван Иванов',
     tracking: 'Отслеживание',
     trackActivity: 'Отслеживать действия пользователя',
     tracked: 'Отслеживается',
     notTracked: 'Не отслеживается',
     created: 'Создано',
+    updatedAt: 'Обновлено',
     confirmDelete: 'Вы уверены, что хотите удалить этого пользователя?',
+    confirmBulkDelete: 'Вы уверены, что хотите удалить выбранных пользователей? Количество: {count}',
+    primaryAdminProtected: 'Главный администратор защищён от удаления',
     
     roles: {
       worker: 'Работник',
@@ -247,7 +275,9 @@ export const ru = {
     failedToExportOrders: 'Не удалось экспортировать заказы',
     failedToSaveUser: 'Не удалось сохранить пользователя',
     failedToDeleteUser: 'Не удалось удалить пользователя',
+    failedToLoadUser: 'Не удалось загрузить пользователя',
     failedToLoadHistory: 'Не удалось загрузить историю действий',
-    orderNotFound: 'Заказ не найден'
+    orderNotFound: 'Заказ не найден',
+    userNotFound: 'Пользователь не найден'
   }
 }

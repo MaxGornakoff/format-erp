@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import orderService from '@/services/orderService'
 import { useAnalyticsStore } from './analyticsStore'
-import type { Order, CreateOrderPayload, UpdateOrderPayload } from '@/services/orderService'
+import type { Order, CreateOrderPayload, UpdateOrderPayload, ResponsibleOption } from '@/services/orderService'
 
 const getErrorMessage = (err: any, fallback: string): string => {
   const validationErrors = err?.response?.data?.errors
@@ -30,7 +30,7 @@ export const useOrderStore = defineStore('order', () => {
   const lastPage = ref(1)
   const filteredOrderCostTotal = ref(0)
   const filteredPackageCostTotal = ref(0)
-  const responsibleOptions = ref<string[]>([])
+  const responsibleOptions = ref<ResponsibleOption[]>([])
 
   const statusFilter = ref<string | undefined>(undefined)
   const executorFilter = ref<string | undefined>(undefined)
@@ -65,7 +65,21 @@ export const useOrderStore = defineStore('order', () => {
       lastPage.value = response.last_page || 1
       filteredOrderCostTotal.value = Number(response.totals?.order_cost ?? 0)
       filteredPackageCostTotal.value = Number(response.totals?.package_cost ?? 0)
-      responsibleOptions.value = Array.isArray(response.responsibles) ? response.responsibles : []
+      responsibleOptions.value = Array.isArray(response.responsibles)
+        ? response.responsibles
+            .map((responsible) => {
+              if (typeof responsible === 'string') {
+                return { value: responsible, label: responsible, real_name: null }
+              }
+
+              return {
+                value: responsible.value,
+                label: responsible.label || responsible.value,
+                real_name: responsible.real_name ?? null,
+              }
+            })
+            .filter((responsible) => responsible.value.trim() !== '')
+        : []
     } catch (err: any) {
       error.value = getErrorMessage(err, 'Failed to fetch orders')
       throw err
@@ -154,6 +168,42 @@ export const useOrderStore = defineStore('order', () => {
     }
   }
 
+  const deleteOrdersBulk = async (ids: number[]) => {
+    const uniqueIds = [...new Set(ids.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0))]
+
+    if (uniqueIds.length === 0) {
+      return
+    }
+
+    isLoading.value = true
+    error.value = null
+
+    try {
+      for (const id of uniqueIds) {
+        await orderService.deleteOrder(id)
+      }
+
+      orders.value = orders.value.filter((order) => !uniqueIds.includes(order.id))
+      total.value = Math.max(0, total.value - uniqueIds.length)
+
+      if (currentOrder.value && uniqueIds.includes(currentOrder.value.id)) {
+        currentOrder.value = null
+      }
+
+      if (orders.value.length === 0 && currentPage.value > 1) {
+        currentPage.value -= 1
+      }
+
+      await fetchOrders()
+      analyticsStore.invalidateAnalytics('orders-bulk-deleted')
+    } catch (err: any) {
+      error.value = getErrorMessage(err, 'Failed to delete selected orders')
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   const setStatusFilter = (status: string | undefined) => {
     statusFilter.value = status || undefined
     currentPage.value = 1
@@ -223,6 +273,7 @@ export const useOrderStore = defineStore('order', () => {
     createOrder,
     updateOrder,
     deleteOrder,
+    deleteOrdersBulk,
     setStatusFilter,
     setExecutorFilter,
     setMineOnlyFilter,

@@ -57,12 +57,13 @@
       @create="handleCreateOrder"
       @view="handleViewOrder"
       @delete="handleDeleteOrder"
+      @bulk-delete="handleBulkDeleteOrders"
     />
 
     <ConfirmDialog
       v-model="showDeleteDialog"
       :title="$t('orders.deleteOrder')"
-      :message="$t('orders.confirmDelete')"
+      :message="deleteDialogMessage"
       :confirm-text="$t('common.delete')"
       :cancel-text="$t('common.cancel')"
       confirm-variant="danger"
@@ -82,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import orderService, { type Order } from '@/services/orderService'
@@ -105,7 +106,7 @@ const showDeleteDialog = ref(false)
 const showInfoDialog = ref(false)
 const dialogTitle = ref('')
 const dialogMessage = ref('')
-const pendingDeleteOrderId = ref<number | null>(null)
+const pendingDeleteOrderIds = ref<number[]>([])
 const editingOrderId = ref<number | undefined>(undefined)
 const editingOrderData = ref<{
   description: string
@@ -141,22 +142,43 @@ const handleViewOrder = (id: number) => {
   router.push(`/orders/${id}`)
 }
 
+const deleteDialogMessage = computed(() => (
+  pendingDeleteOrderIds.value.length > 1
+    ? t('orders.confirmBulkDelete', { count: pendingDeleteOrderIds.value.length })
+    : t('orders.confirmDelete')
+))
+
 const handleDeleteOrder = (id: number) => {
-  pendingDeleteOrderId.value = id
+  pendingDeleteOrderIds.value = [id]
+  showDeleteDialog.value = true
+}
+
+const handleBulkDeleteOrders = (ids: number[]) => {
+  pendingDeleteOrderIds.value = ids
   showDeleteDialog.value = true
 }
 
 const confirmDeleteOrder = async () => {
-  if (!pendingDeleteOrderId.value) {
+  if (pendingDeleteOrderIds.value.length === 0) {
     return
   }
 
   try {
-    await store.deleteOrder(pendingDeleteOrderId.value)
+    if (pendingDeleteOrderIds.value.length > 1) {
+      await store.deleteOrdersBulk(pendingDeleteOrderIds.value)
+    } else {
+      const orderId = pendingDeleteOrderIds.value[0]
+
+      if (orderId === undefined) {
+        return
+      }
+
+      await store.deleteOrder(orderId)
+    }
   } catch (err: any) {
     showErrorDialog(err?.response?.data?.message || err?.message || t('messages.failedToDeleteOrder'))
   } finally {
-    pendingDeleteOrderId.value = null
+    pendingDeleteOrderIds.value = []
     showDeleteDialog.value = false
   }
 }
